@@ -1,0 +1,9 @@
+[package]
+name = "cryptographic_id"
+version = "0.1.0"
+authors = ["Simon Brand <simon.brand@postadigitale.de>"]
+edition = "2021"
+
+[dependencies]
+ed25519-dalek = "1.0.1"
+qrcode = "0.12.0"
