@@ -8,3 +8,7 @@ edition = "2021"
 ed25519-dalek = "1.0.1"
 qrcode = "0.12.0"
 rand = "0.7.0"
+prost = "0.11.0"
+
+[build-dependencies]
+prost-build = "0.11.1"

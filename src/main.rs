@@ -10,7 +10,11 @@ use ed25519_dalek::Keypair;
 use ed25519_dalek::Signature;
 use rand::rngs::OsRng;
 use qrcode::QrCode;
+use prost::Message;
 
+pub mod message {
+    include!(concat!(env!("OUT_DIR"), "/_.rs"));
+}
 
 fn create_keypair() -> Keypair {
     let mut csprng = OsRng{};
@@ -18,7 +22,7 @@ fn create_keypair() -> Keypair {
     return keypair;
 }
 
-fn sign(keypair: Keypair, message: &[u8]) -> Signature {
+fn sign(keypair: &Keypair, message: &[u8]) -> Signature {
     let signature = keypair.sign(message);
     return signature;
 }
@@ -42,13 +46,18 @@ fn load_keypair_from_file(filename: &str) -> io::Result<Keypair> {
     }
 }
 
-fn show_qrcode(message: &[u8]) {
-    let code = QrCode::new(message).unwrap();
+fn show_qrcode(m: &message::QrData) -> Result<(), prost::EncodeError> {
+    let mut buf = Vec::new();
+    buf.reserve(m.encoded_len());
+    m.encode(&mut buf)?;
+
+    let code = QrCode::new(&buf).unwrap();
     let string = code.render::<char>()
         .quiet_zone(false)
         .module_dimensions(2, 1)
         .build();
     println!("{}", string);
+    return Ok(());
 }
 
 fn main() {
@@ -68,7 +77,18 @@ fn main() {
             return;
         },
     };
-    let signature = sign(keypair2, b"Test message");
-    println!("Sig: {}", signature);
-    show_qrcode(&signature.to_bytes());
+    let signature = sign(&keypair2, b"Test message");
+    let msg = message::QrData {
+        action: message::qr_data::Action::Share as i32,
+        public_key: keypair2.public.to_bytes().to_vec(),
+        timestamp: 0,
+        signature: signature.to_bytes().to_vec(),
+        entries: Vec::new(),
+    };
+    match show_qrcode(&msg) {
+        Ok(_) => {},
+        Err(e) => {
+            println!("Error while encoding qrdata: {}", e);
+        },
+    };
 }
