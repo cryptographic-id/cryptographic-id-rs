@@ -6,6 +6,7 @@ use std::io::Write;
 use std::io;
 use std::path::Path;
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 use ed25519_dalek::Keypair;
 use ed25519_dalek::Signature;
@@ -90,6 +91,15 @@ fn parse_args(args: &Vec<String>) -> Result<Action, String> {
     return Err("Usage: create_key|sign PATH_TO_KEY".to_string());
 }
 
+fn timestamp_now() -> u64 {
+    return match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(k) => k.as_secs(),
+        Err(_) => {
+            panic!("SystemTime before UNIX EPOCH!");
+        },
+    };
+}
+
 fn parse_args_and_execute(args: &Vec<String>) -> i32 {
     let action = match parse_args(&args) {
         Ok(k) => k,
@@ -119,7 +129,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
             };
             let mut msg = message::QrData {
                 public_key: keypair.public.to_bytes().to_vec(),
-                timestamp: 0, // TODO date
+                timestamp: timestamp_now(),
                 signature: Vec::new(),
                 personal_information: Vec::new(),
             };
