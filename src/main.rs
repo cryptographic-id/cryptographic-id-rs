@@ -60,6 +60,17 @@ fn show_qrcode(m: &message::QrData) -> Result<(), prost::EncodeError> {
     return Ok(());
 }
 
+fn sign_qrdata(data: &mut message::QrData, keypair: Keypair) {
+    let to_sign_arr: [Vec<u8>; 3] = [
+        data.action.to_be_bytes().to_vec(),
+        data.timestamp.to_be_bytes().to_vec(),
+        data.public_key.clone()];
+    let to_sign: Vec<u8> = to_sign_arr.iter().flat_map(
+        |v| v.iter().copied()).collect();
+    let signature = sign(&keypair, &to_sign);
+    data.signature = signature.to_bytes().to_vec();
+}
+
 fn main() {
     let keypair = create_keypair();
     let file = "my_key";
@@ -77,14 +88,14 @@ fn main() {
             return;
         },
     };
-    let signature = sign(&keypair2, b"Test message");
-    let msg = message::QrData {
+    let mut msg = message::QrData {
         action: message::qr_data::Action::Share as i32,
         public_key: keypair2.public.to_bytes().to_vec(),
-        timestamp: 0,
-        signature: signature.to_bytes().to_vec(),
+        timestamp: 0, // TODO date
+        signature: Vec::new(),
         entries: Vec::new(),
     };
+    sign_qrdata(&mut msg, keypair2);
     match show_qrcode(&msg) {
         Ok(_) => {},
         Err(e) => {
