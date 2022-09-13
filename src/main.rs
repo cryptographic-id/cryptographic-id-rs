@@ -77,14 +77,14 @@ fn main() {
     match save_keypair_to_file(keypair, "my_key2") {
         Ok(()) => (),
         Err(e) => {
-            println!("{}", e);
+            println!("Error saviing keypair: {}", e);
             return;
         },
     };
     let keypair2 = match load_keypair_from_file(file) {
         Ok(k) => k,
         Err(e) => {
-            println!("{}", e);
+            println!("Error loading keypair: {}", e);
             return;
         },
     };
