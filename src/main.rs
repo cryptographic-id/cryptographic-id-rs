@@ -1,19 +1,18 @@
-extern crate rand;
-extern crate ed25519_dalek;
 use std::env;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
+use std::io;
 use std::path::Path;
 use std::path::PathBuf;
-use std::io;
-use ed25519_dalek::Signer;
+
 use ed25519_dalek::Keypair;
 use ed25519_dalek::Signature;
-use rand::rngs::OsRng;
-use qrcode::QrCode;
+use ed25519_dalek::Signer;
 use prost::Message;
+use qrcode::QrCode;
+use rand::rngs::OsRng;
 
 pub mod message {
     include!(concat!(env!("OUT_DIR"), "/qrdata.rs"));
