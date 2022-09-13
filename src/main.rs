@@ -1,9 +1,12 @@
 extern crate rand;
 extern crate ed25519_dalek;
+use std::env;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 use std::io;
 use ed25519_dalek::Signer;
 use ed25519_dalek::Keypair;
@@ -27,14 +30,14 @@ fn sign(keypair: &Keypair, message: &[u8]) -> Signature {
     return signature;
 }
 
-fn save_keypair_to_file(keypair: Keypair, filename: &str) -> io::Result<()> {
+fn save_keypair_to_file(keypair: Keypair, filename: PathBuf) -> io::Result<()> {
     let secret_key_bytes = keypair.to_bytes();
     let mut f = File::create(filename)?;
     f.write_all(&secret_key_bytes)?;
     return Ok(());
 }
 
-fn load_keypair_from_file(filename: &str) -> io::Result<Keypair> {
+fn load_keypair_from_file(filename: PathBuf) -> io::Result<Keypair> {
     let f = File::open(filename)?;
     let mut reader = BufReader::new(f);
     let mut buffer = Vec::new();
@@ -70,34 +73,71 @@ fn sign_qrdata(data: &mut message::QrData, keypair: Keypair) {
     data.signature = signature.to_bytes().to_vec();
 }
 
-fn main() {
-    let keypair = create_keypair();
-    let file = "my_key";
-    match save_keypair_to_file(keypair, "my_key2") {
-        Ok(()) => (),
-        Err(e) => {
-            println!("Error saviing keypair: {}", e);
-            return;
-        },
-    };
-    let keypair2 = match load_keypair_from_file(file) {
+enum Action {
+    CreateKey(PathBuf),
+    SignWithKey(PathBuf),
+}
+
+fn parse_args(args: &Vec<String>) -> Result<Action, String> {
+    if args.len() == 3 {
+        let key_path = Path::new(&args[2]).to_path_buf();
+        let action = &args[1];
+        if action == "create_key" {
+            return Ok(Action::CreateKey(key_path));
+        } else if action == "sign" {
+            return Ok(Action::SignWithKey(key_path));
+        }
+    }
+    return Err("Usage: create_key|sign PATH_TO_KEY".to_string());
+}
+
+fn parse_args_and_execute(args: &Vec<String>) -> i32 {
+    let action = match parse_args(&args) {
         Ok(k) => k,
-        Err(e) => {
-            println!("Error loading keypair: {}", e);
-            return;
+        Err(t) => {
+            println!("{}", t);
+            return 1;
         },
     };
-    let mut msg = message::QrData {
-        public_key: keypair2.public.to_bytes().to_vec(),
-        timestamp: 0, // TODO date
-        signature: Vec::new(),
-        personal_information: Vec::new(),
-    };
-    sign_qrdata(&mut msg, keypair2);
-    match show_qrcode(&msg) {
-        Ok(_) => {},
-        Err(e) => {
-            println!("Error while encoding qrdata: {}", e);
+    match action {
+        Action::CreateKey(path) => {
+            let keypair = create_keypair();
+            return match save_keypair_to_file(keypair, path) {
+                Ok(()) => 0,
+                Err(e) => {
+                    println!("Error saving keypair: {}", e);
+                    2
+                },
+            };
+        },
+        Action::SignWithKey(path) => {
+            let keypair = match load_keypair_from_file(path) {
+                Ok(k) => k,
+                Err(e) => {
+                    println!("Error loading keypair: {}", e);
+                    return 2;
+                },
+            };
+            let mut msg = message::QrData {
+                public_key: keypair.public.to_bytes().to_vec(),
+                timestamp: 0, // TODO date
+                signature: Vec::new(),
+                personal_information: Vec::new(),
+            };
+            sign_qrdata(&mut msg, keypair);
+            return match show_qrcode(&msg) {
+                Ok(_) => 0,
+                Err(e) => {
+                    println!("Error while encoding qrdata: {}", e);
+                    3
+                },
+            };
         },
     };
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    let result = parse_args_and_execute(&args);
+    std::process::exit(result);
 }
