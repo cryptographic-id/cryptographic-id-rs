@@ -13,7 +13,7 @@ use qrcode::QrCode;
 use prost::Message;
 
 pub mod message {
-    include!(concat!(env!("OUT_DIR"), "/_.rs"));
+    include!(concat!(env!("OUT_DIR"), "/qrdata.rs"));
 }
 
 fn create_keypair() -> Keypair {
@@ -61,8 +61,7 @@ fn show_qrcode(m: &message::QrData) -> Result<(), prost::EncodeError> {
 }
 
 fn sign_qrdata(data: &mut message::QrData, keypair: Keypair) {
-    let to_sign_arr: [Vec<u8>; 3] = [
-        data.action.to_be_bytes().to_vec(),
+    let to_sign_arr = [
         data.timestamp.to_be_bytes().to_vec(),
         data.public_key.clone()];
     let to_sign: Vec<u8> = to_sign_arr.iter().flat_map(
@@ -89,11 +88,10 @@ fn main() {
         },
     };
     let mut msg = message::QrData {
-        action: message::qr_data::Action::Share as i32,
         public_key: keypair2.public.to_bytes().to_vec(),
         timestamp: 0, // TODO date
         signature: Vec::new(),
-        entries: Vec::new(),
+        personal_information: Vec::new(),
     };
     sign_qrdata(&mut msg, keypair2);
     match show_qrcode(&msg) {
