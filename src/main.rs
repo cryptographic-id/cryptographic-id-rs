@@ -112,7 +112,10 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 		Action::CreateKey(path) => {
 			let keypair = create_keypair();
 			return match save_keypair_to_file(keypair, path) {
-				Ok(()) => 0,
+				Ok(()) => {
+					println!("Key created");
+					0
+				},
 				Err(e) => {
 					println!("Error saving key: {}", e);
 					2
