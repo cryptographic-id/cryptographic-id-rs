@@ -138,7 +138,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 				Ok(_) => 0,
 				Err(e) => {
 					println!("Error while encoding \
-					          qrdata: {}", e);
+					          qrcode: {}", e);
 					3
 				},
 			};
