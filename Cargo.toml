@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 ed25519-dalek = "1.0.1"
-qrcode = "0.12.0"
+qrcode = { version = "0.12.0", default-features = false }
 rand = "0.7.0"
 prost = "0.11.0"
 
