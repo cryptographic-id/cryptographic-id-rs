@@ -16,7 +16,7 @@ use qrcode::QrCode;
 use rand::rngs::OsRng;
 
 pub mod message {
-	include!(concat!(env!("OUT_DIR"), "/qrdata.rs"));
+	include!(concat!(env!("OUT_DIR"), "/cryptographic_id.rs"));
 }
 
 fn create_keypair() -> Keypair {
@@ -49,7 +49,7 @@ fn load_keypair_from_file(filename: PathBuf) -> io::Result<Keypair> {
 	}
 }
 
-fn show_qrcode(m: &message::QrData) -> Result<(), prost::EncodeError> {
+fn show_qrcode(m: &message::CryptographicId) -> Result<(), prost::EncodeError> {
 	let mut buf = Vec::new();
 	buf.reserve(m.encoded_len());
 	m.encode(&mut buf)?;
@@ -63,14 +63,25 @@ fn show_qrcode(m: &message::QrData) -> Result<(), prost::EncodeError> {
 	return Ok(());
 }
 
-fn sign_qrdata(data: &mut message::QrData, keypair: Keypair) {
+fn sign_array(keypair: &Keypair, to_sign_arr: &Vec<Vec<u8>>) -> Vec<u8> {
+	let to_sign: Vec<u8> = to_sign_arr.iter().flat_map(
+		|v| v.iter().copied()).collect();
+	return sign(keypair, &to_sign).to_bytes().to_vec();
+}
+
+fn sign_qrdata(data: &mut message::CryptographicId, keypair: Keypair) {
 	let to_sign_arr = [
 		data.timestamp.to_be_bytes().to_vec(),
 		data.public_key.clone()];
-	let to_sign: Vec<u8> = to_sign_arr.iter().flat_map(
-		|v| v.iter().copied()).collect();
-	let signature = sign(&keypair, &to_sign);
-	data.signature = signature.to_bytes().to_vec();
+	data.signature = sign_array(&keypair, &to_sign_arr.to_vec());
+
+	for e in &mut data.personal_information {
+		let e_to_sign_arr = [
+			e.timestamp.to_be_bytes().to_vec(),
+			e.r#type.to_be_bytes().to_vec(),
+			e.content.as_bytes().to_vec()];
+		e.signature = sign_array(&keypair, &e_to_sign_arr.to_vec());
+	}
 }
 
 enum Action {
@@ -130,9 +141,10 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 					return 2;
 				},
 			};
-			let mut msg = message::QrData {
+			let timestamp = timestamp_now();
+			let mut msg = message::CryptographicId {
 				public_key: keypair.public.to_bytes().to_vec(),
-				timestamp: timestamp_now(),
+				timestamp: timestamp,
 				signature: Vec::new(),
 				personal_information: Vec::new(),
 			};
