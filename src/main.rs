@@ -80,7 +80,7 @@ fn sign_qrdata(data: &mut message::CryptographicId, keypair: Keypair) {
 		let e_to_sign_arr = [
 			e.timestamp.to_be_bytes().to_vec(),
 			e.r#type.to_be_bytes().to_vec(),
-			e.content.as_bytes().to_vec()];
+			e.value.as_bytes().to_vec()];
 		e.signature = sign_array(&keypair, &e_to_sign_arr.to_vec());
 	}
 }
