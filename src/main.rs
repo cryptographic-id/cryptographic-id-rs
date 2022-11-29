@@ -8,6 +8,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
+use base64;
 use ed25519_dalek::Keypair;
 use ed25519_dalek::Signature;
 use ed25519_dalek::Signer;
@@ -53,8 +54,8 @@ fn show_qrcode(m: &message::CryptographicId) -> Result<(), prost::EncodeError> {
 	let mut buf = Vec::new();
 	buf.reserve(m.encoded_len());
 	m.encode(&mut buf)?;
-
-	let code = QrCode::new(&buf).unwrap();
+	let msg: String = base64::encode(&buf);
+	let code = QrCode::new(&msg).unwrap();
 	let string = code.render::<char>()
 		.quiet_zone(false)
 		.module_dimensions(2, 1)
