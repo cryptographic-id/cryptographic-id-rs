@@ -10,6 +10,7 @@ use std::time::SystemTime;
 
 use base64;
 use ed25519_dalek::Keypair;
+use ed25519_dalek::PublicKey;
 use ed25519_dalek::Signature;
 use ed25519_dalek::Signer;
 use prost::Message;
@@ -50,6 +51,25 @@ fn load_keypair_from_file(filename: PathBuf) -> io::Result<Keypair> {
 	}
 }
 
+fn bytes_to_hex(bytes_vec: Vec<u8>) -> String {
+	return bytes_vec.iter().map(
+		|b| format!("{:02x}", b).to_uppercase()
+	).collect::<Vec<String>>().join(":");
+}
+
+fn format_public_key(key: PublicKey) -> String {
+	let bytes_vec = key.to_bytes().to_vec();
+	let hex = bytes_to_hex(bytes_vec);
+	if hex.len() != 95 {
+		return hex;
+	}
+	return vec![
+		hex[0..23].to_string(),
+		hex[24..47].to_string(),
+		hex[48..71].to_string(),
+		hex[72..95].to_string()].join("\n");
+}
+
 fn show_qrcode(m: &message::CryptographicId) -> Result<(), prost::EncodeError> {
 	let mut buf = Vec::new();
 	buf.reserve(m.encoded_len());
@@ -87,6 +107,7 @@ fn sign_qrdata(data: &mut message::CryptographicId, keypair: Keypair) {
 
 enum Action {
 	CreateKey(PathBuf),
+	ShowPublicKey(PathBuf),
 	SignWithKey(PathBuf),
 }
 
@@ -98,6 +119,8 @@ fn parse_args(args: &Vec<String>) -> Result<Action, String> {
 			return Ok(Action::CreateKey(key_path));
 		} else if action == "sign" {
 			return Ok(Action::SignWithKey(key_path));
+		} else if action == "show" {
+			return Ok(Action::ShowPublicKey(key_path));
 		}
 	}
 	return Err("Usage: create_key|sign PATH_TO_KEY".to_string());
@@ -133,6 +156,18 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 					2
 				},
 			};
+		},
+		Action::ShowPublicKey(path) => {
+			let keypair = match load_keypair_from_file(path) {
+				Ok(k) => k,
+				Err(e) => {
+					println!("Error loading key: {}", e);
+					return 2;
+				},
+			};
+			let hex = format_public_key(keypair.public);
+			println!("Public Key:\n{}", hex);
+			return 0;
 		},
 		Action::SignWithKey(path) => {
 			let keypair = match load_keypair_from_file(path) {
