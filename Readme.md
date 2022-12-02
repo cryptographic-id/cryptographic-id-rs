@@ -8,6 +8,7 @@ This is a tool to create an identity based on ed25519 signatures. It can be used
 
 To build and run the tool:
 ```bash
+git submodule update --init --recursive
 cargo build --release
 ./target/debug/cryptographic-id-rs --help
 ```
