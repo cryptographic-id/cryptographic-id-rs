@@ -111,7 +111,22 @@ enum Action {
 	SignWithKey(PathBuf),
 }
 
-fn parse_args(args: &Vec<String>) -> Result<Action, String> {
+fn print_help() {
+	let args: Vec<String> = env::args().collect();
+	println!(
+		"Command-line tool to sign cryptographic-id\n\
+		\n\
+		Usage: {exe} METHOD path_to_private_key\n\
+		\n\
+		Methods:\n\
+		\tcreate_key      Create a private key\n\
+		\tsign            Sign own id\n\
+		\tshow            Show public key in hex format\n\
+		",
+		exe=args[0]);
+}
+
+fn parse_args(args: &Vec<String>) -> Result<Action, ()> {
 	if args.len() == 3 {
 		let key_path = Path::new(&args[2]).to_path_buf();
 		let action = &args[1];
@@ -123,7 +138,7 @@ fn parse_args(args: &Vec<String>) -> Result<Action, String> {
 			return Ok(Action::ShowPublicKey(key_path));
 		}
 	}
-	return Err("Usage: create_key|sign PATH_TO_KEY".to_string());
+	return Err(());
 }
 
 fn timestamp_now() -> u64 {
@@ -138,8 +153,8 @@ fn timestamp_now() -> u64 {
 fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 	let action = match parse_args(&args) {
 		Ok(k) => k,
-		Err(t) => {
-			println!("{}", t);
+		Err(_t) => {
+			print_help();
 			return 1;
 		},
 	};
