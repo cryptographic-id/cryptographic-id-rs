@@ -69,7 +69,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cryptographic_id"
+name = "cryptographic-id-rs"
 version = "0.1.0"
 dependencies = [
  "base64",
