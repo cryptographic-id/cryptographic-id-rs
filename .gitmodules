@@ -1,0 +1,3 @@
+[submodule "src/cryptographic-id-protocol"]
+	path = src/cryptographic-id-protocol
+	url = https://gitlab.com/cryptographic_id/cryptographic-id-protocol.git
