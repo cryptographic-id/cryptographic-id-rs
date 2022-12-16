@@ -15,6 +15,7 @@ use ed25519_dalek::Signature;
 use ed25519_dalek::Signer;
 use prost::Message;
 use qrcode::QrCode;
+use qrcode::types::QrError;
 use rand::rngs::OsRng;
 
 pub mod message {
@@ -70,12 +71,17 @@ fn format_public_key(key: PublicKey) -> String {
 		hex[72..95].to_string()].join("\n");
 }
 
-fn show_qrcode(m: &message::CryptographicId) -> Result<(), prost::EncodeError> {
+fn message_to_data(m: &message::CryptographicId)
+		-> Result<Vec<u8>, prost::EncodeError> {
 	let mut buf = Vec::new();
 	buf.reserve(m.encoded_len());
 	m.encode(&mut buf)?;
+	return Ok(buf);
+}
+
+fn show_qrcode(buf: &Vec<u8>) -> Result<(), QrError> {
 	let msg: String = base64::encode(&buf);
-	let code = QrCode::new(&msg).unwrap();
+	let code = QrCode::new(&msg)?;
 	let string = code.render::<char>()
 		.quiet_zone(false)
 		.module_dimensions(2, 1)
@@ -200,12 +206,20 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 				personal_information: Vec::new(),
 			};
 			sign_qrdata(&mut msg, keypair);
-			return match show_qrcode(&msg) {
+			let data = match message_to_data(&msg) {
+				Ok(d) => d,
+				Err(e) => {
+					println!("Error while encoding \
+					          message: {}", e);
+					return 3;
+				},
+			};
+			return match show_qrcode(&data) {
 				Ok(_) => 0,
 				Err(e) => {
 					println!("Error while encoding \
 					          qrcode: {}", e);
-					3
+					4
 				},
 			};
 		},
