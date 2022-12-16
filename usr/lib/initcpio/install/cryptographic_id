@@ -1,0 +1,45 @@
+#!/bin/bash
+DIR="/etc/cryptographic_id/initramfs"
+
+build() {
+	add_binary "cat"
+	add_binary "date"
+	add_binary "bwrap"
+	add_binary "/usr/lib/cryptographic_id/cryptographic-id-rs"
+	add_file "/usr/bin/cryptographic_id"
+	add_file "/usr/lib/cryptographic_id/initramfs_helper"
+	add_file "/usr/lib/cryptographic_id/show_identities"
+	add_dir /tmp/cryptographic_id
+	if [ "$(find "${DIR}" -perm -o=r)" != "" ]; then
+		error "ERR: There are world readable files in ${DIR}\\n"
+		exit 1
+	fi
+	add_full_dir "${DIR}"
+	if [ -n "$(ls -A "${DIR}/age")" ]; then
+		add_binary "age"
+	fi
+	if [ -n "$(ls -A "${DIR}/cryptsetup")" ]; then
+		add_binary "/usr/lib/systemd/systemd-cryptsetup"
+		add_module 'dm-crypt'
+		add_all_modules '/crypto/'
+	fi
+	if type add_systemd_unit &> /dev/null; then
+		add_systemd_unit cryptographic_id.service
+		add_systemd_unit cryptographic_id_helper@.service
+		cat <<EOF | add_systemd_drop_in initrd-switch-root.service cryptographic_id
+[Unit]
+Requires=cryptographic_id.service
+EOF
+	else
+		error "ERR: non-systemd variant not supported"
+		exit 1
+	fi
+}
+# symlink in sysinit.target.wants
+
+help() {
+	cat <<HELPEOF
+This hooks prints cryptographic identities from unencrypted,
+age-encrypted or tpm2+pin encrypted files.
+HELPEOF
+}

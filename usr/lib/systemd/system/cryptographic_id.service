@@ -1,0 +1,34 @@
+[Unit]
+Description=Show cryptographic identities on boot
+Requires=systemd-vconsole-setup.service
+After=plymouth-start.service systemd-vconsole-setup.service
+Before=systemd-ask-password-console.service initrd-switch-root.service cryptsetup.target
+Conflicts=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStartPre=+/usr/bin/mkdir -p /tmp/cryptographic_id
+ExecStartPre=+/usr/bin/mount -t tmpfs none /tmp/cryptographic_id
+ExecStart=-/usr/bin/sh /usr/lib/cryptographic_id/show_identities
+ExecStartPost=+/usr/bin/umount /tmp/cryptographic_id
+
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TimeoutStartSec=infinity
+
+IPAddressDeny=any
+LockPersonality=true
+MemoryDenyWriteExecute=true
+NoNewPrivileges=true
+PrivateNetwork=true
+ProtectClock=true
+ProtectHostname=true
+RemoveIPC=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=sysinit.target

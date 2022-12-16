@@ -1,0 +1,59 @@
+#!/usr/bin/sh
+DIR="/etc/cryptographic_id/initramfs"
+TMPDIR=
+TMPKEY=
+help() {
+	cat << EOF
+Create identity in the initramfs directory. (Rebuild it to include new keys.)
+Add a unencrypted identity:
+	${0} insecure NAME
+Add a age-encrypted identity
+	${0} age NAME
+Add a luks encrypted identity (tpm2-pin supported)
+	${0} cryptsetup NAME
+EOF
+}
+cleanup() {
+	umount "${TMPDIR}"
+	rm -rf "${TMPDIR}"
+}
+create_tmpdir() {
+	trap cleanup EXIT
+	TMPDIR="$(mktemp -d || exit 1)"
+	mount -t tmpfs tmpfs "${TMPDIR}"
+	chmod 700 "${TMPDIR}"
+}
+create_tmpkey(){
+	create_tmpdir
+	TMPKEY="${TMPDIR}/id"
+	cryptographic_id create "${TMPKEY}"
+	cryptographic_id show "${TMPKEY}"
+}
+case "${1}" in
+insecure)
+	key="${DIR}/insecure/${2}"
+	printf "Create key: %s\\n" "${key}"
+	cryptographic_id create "${key}"
+	cryptographic_id show "${key}"
+;;
+age)
+	key="${DIR}/age/${2}"
+	printf "Create key: %s\\n" "${key}"
+	create_tmpkey
+	age -p -o "${key}" "${TMPKEY}"
+;;
+cryptsetup)
+	key="${DIR}/cryptsetup/${2}"
+	printf "Create key: %s\\n" "${key}"
+	dd if=/dev/zero of="${key}" bs=20M count=1
+	cryptsetup luksFormat -c aes-xts-plain64 -s 512 -h sha512 "${key}"
+	# systemd-cryptenroll --tpm2-device=/path/to/tpm2_device --tpm2-pcrs=0+7 /dev/sdX
+	cryptsetup open "${key}" cryptographic_id_tmp
+	create_tmpkey
+	dd if="${TMPKEY}" of=/dev/mapper/cryptographic_id_tmp
+	cryptsetup close cryptographic_id_tmp
+;;
+*)
+	help
+;;
+esac

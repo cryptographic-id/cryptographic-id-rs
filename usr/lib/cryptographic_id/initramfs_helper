@@ -1,0 +1,13 @@
+#!/usr/bin/sh
+TMPDIR="/tmp/cryptographic_id"
+KEY="/tmp/cryptographic_id/key"
+MSG="/tmp/cryptographic_id/message"
+QRCODE="/tmp/cryptographic_id/qrcode"
+run_cmd() {
+	/usr/lib/cryptographic_id/cryptographic-id-rs "${@}"
+}
+case "${1}" in
+sign)
+	run_cmd "${1}" "${KEY}" "$(cat "${MSG}")" > "${QRCODE}"
+;;
+esac

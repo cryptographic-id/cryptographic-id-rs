@@ -1,0 +1,55 @@
+#!/usr/bin/sh
+DIR="/etc/cryptographic_id/initramfs"
+TMPDIR="/tmp/cryptographic_id"
+TMPKEY="${TMPDIR}/key"
+
+cat_identity() {
+	cp "${1}" "${TMPKEY}"
+}
+
+age_decrypt_identity() {
+	for _ in 1 2 3; do
+		age -d -o "${TMPKEY}" "${1}" && return
+	done
+}
+
+cryptsetup_identity() {
+	/usr/lib/systemd/systemd-cryptsetup attach cryptographic_id_tmp "${1}" - tpm2-device=/dev/tpmrm0
+	dd if=/dev/mapper/cryptographic_id_tmp of="${TMPKEY}" count=1 bs=64 status=none
+	/usr/lib/systemd/systemd-cryptsetup detach cryptographic_id_tmp
+}
+
+show_identities() {
+	res=""
+	for file in "${DIR}/${1}/"*; do
+		# ignore empty/inexistent directories
+		[ ! -f "${file}" ] && return
+		${2} "${file}"
+		if [ ! -f "${TMPKEY}" ]; then
+			printf "Key does not exist\\n"
+			continue
+		fi
+		res=""
+		while [ "${res}" != "y" ]; do
+			printf "Key: %s:\\n" "${file}"
+			printf "\\nEnter message to sign: "
+			read -r msg
+			printf "%s" "${msg}" > "${TMPDIR}/message"
+			date '+%Y-%m-%d %H:%M:%S'
+			systemctl start cryptographic_id_helper@sign.service
+			cat "${TMPDIR}/qrcode"
+			printf "\\nContinue (y) or create new qr-code (q)? "
+			read -r res
+			printf "\\n"
+		done
+		rm -f "${TMPKEY}"
+	done
+}
+
+main() {
+	show_identities "insecure" cat_identity
+	show_identities "cryptsetup" cryptsetup_identity
+	show_identities "age" age_decrypt_identity
+}
+
+main

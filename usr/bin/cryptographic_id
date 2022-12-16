@@ -1,0 +1,69 @@
+#!/usr/bin/sh
+ADD_RW_FILE="/dev/null"
+use_rw_file() {
+	file="$(realpath "${1}")"
+	touch "${file}"
+	if [ ! -f "${file}" ]; then
+		printf "%s is not a file\\n" "${file}"
+		exit 1
+	fi
+	ADD_RW_FILE="${file}"
+}
+run_cmd() {
+	/usr/bin/systemd-run --user --quiet --pty --same-dir \
+		-p "AmbientCapabilities=" \
+		-p "CapabilityBoundingSet=" \
+		-p "DeviceAllow=/dev/null" \
+		-p "DevicePolicy=closed" \
+		-p "IPAddressDeny=any" \
+		-p "LockPersonality=true" \
+		-p "MemoryDenyWriteExecute=true" \
+		-p "NoNewPrivileges=true" \
+		-p "PrivateDevices=true" \
+		-p "PrivateIPC=true" \
+		-p "PrivateNetwork=true" \
+		-p "PrivateUsers=true" \
+		-p "ProcSubset=pid" \
+		-p "ProtectClock=true" \
+		-p "ProtectControlGroups=true" \
+		-p "ProtectHostname=true" \
+		-p "ProtectKernelLogs=true" \
+		-p "ProtectKernelModules=true" \
+		-p "ProtectKernelTunables=true" \
+		-p "ProtectProc=invisible" \
+		-p "ProtectSystem=strict" \
+		-p "ReadOnlyDirectories=/" \
+		-p "ReadWriteDirectories=${ADD_RW_FILE}" \
+		-p "RemoveIPC=true" \
+		-p "RestrictAddressFamilies=" \
+		-p "RestrictNamespaces=true" \
+		-p "RestrictRealtime=true" \
+		-p "RestrictSUIDSGID=true" \
+		-p "RestrictAddressFamilies=AF_UNIX" \
+		-p "SystemCallArchitectures=native" \
+		-p "SystemCallFilter=~@clock" \
+		-p "SystemCallFilter=~@debug" \
+		-p "SystemCallFilter=~@module" \
+		-p "SystemCallFilter=~@mount" \
+		-p "SystemCallFilter=~@raw-io" \
+		-p "SystemCallFilter=~@reboot" \
+		-p "SystemCallFilter=~@swap" \
+		-p "SystemCallFilter=~@privileged" \
+		-p "SystemCallFilter=~@resources" \
+		-p "SystemCallFilter=~@cpu-emulation" \
+		-p "SystemCallFilter=~@obsolete" \
+		/usr/lib/cryptographic_id/cryptographic-id-rs "${@}"
+}
+case "${1}" in
+show|create)
+	use_rw_file "${2}"
+	run_cmd "${1}" "${ADD_RW_FILE}"
+;;
+sign)
+	use_rw_file "${2}"
+	run_cmd "${1}" "${ADD_RW_FILE}" "${3}"
+;;
+*)
+	run_cmd "${@}"
+;;
+esac
