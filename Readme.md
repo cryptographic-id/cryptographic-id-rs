@@ -17,7 +17,7 @@ cargo build --release
 
 To create a key and sign the identity:
 ```bash
-target/debug/cryptographic-id-rs create_key path/to/testkey
+target/debug/cryptographic-id-rs create path/to/testkey
 target/debug/cryptographic-id-rs show path/to/testkey
-target/debug/cryptographic-id-rs sign path/to/testkey
+target/debug/cryptographic-id-rs sign path/to/testkey Message
 ```

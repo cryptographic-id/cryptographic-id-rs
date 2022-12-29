@@ -99,7 +99,8 @@ fn sign_array(keypair: &Keypair, to_sign_arr: &Vec<Vec<u8>>) -> Vec<u8> {
 fn sign_qrdata(data: &mut message::CryptographicId, keypair: Keypair) {
 	let to_sign_arr = [
 		data.timestamp.to_be_bytes().to_vec(),
-		data.public_key.clone()];
+		data.public_key.clone(),
+		data.msg.clone()];
 	data.signature = sign_array(&keypair, &to_sign_arr.to_vec());
 
 	for e in &mut data.personal_information {
@@ -114,7 +115,7 @@ fn sign_qrdata(data: &mut message::CryptographicId, keypair: Keypair) {
 enum Action {
 	CreateKey(PathBuf),
 	ShowPublicKey(PathBuf),
-	SignWithKey(PathBuf),
+	SignWithKey(PathBuf, String),
 }
 
 fn print_help() {
@@ -122,26 +123,33 @@ fn print_help() {
 	println!(
 		"Command-line tool to sign cryptographic-id\n\
 		\n\
-		Usage: {exe} METHOD path_to_private_key\n\
+		Usage: {exe} METHOD path_to_private_key [message]\n\
 		\n\
 		Methods:\n\
-		\tcreate_key      Create a private key\n\
-		\tsign            Sign own id\n\
+		\tcreate          Create a private key\n\
+		\tsign            Sign own id with message\n\
 		\tshow            Show public key in hex format\n\
 		",
 		exe=args[0]);
 }
 
 fn parse_args(args: &Vec<String>) -> Result<Action, ()> {
+	if args.len() < 3 {
+		return Err(());
+	}
+	let key_path = Path::new(&args[2]).to_path_buf();
+	let action = &args[1];
 	if args.len() == 3 {
-		let key_path = Path::new(&args[2]).to_path_buf();
-		let action = &args[1];
-		if action == "create_key" {
+		if action == "create" {
 			return Ok(Action::CreateKey(key_path));
-		} else if action == "sign" {
-			return Ok(Action::SignWithKey(key_path));
 		} else if action == "show" {
 			return Ok(Action::ShowPublicKey(key_path));
+		}
+	}
+	if args.len() == 4 {
+		if action == "sign" {
+			let msg = &args[3];
+			return Ok(Action::SignWithKey(key_path, msg.to_string()));
 		}
 	}
 	return Err(());
@@ -190,7 +198,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 			println!("Public Key:\n{}", hex);
 			return 0;
 		},
-		Action::SignWithKey(path) => {
+		Action::SignWithKey(path, msg) => {
 			let keypair = match load_keypair_from_file(path) {
 				Ok(k) => k,
 				Err(e) => {
@@ -202,6 +210,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 			let mut msg = message::CryptographicId {
 				public_key: keypair.public.to_bytes().to_vec(),
 				timestamp: timestamp,
+				msg: msg.as_bytes().to_vec(),
 				signature: Vec::new(),
 				personal_information: Vec::new(),
 			};
