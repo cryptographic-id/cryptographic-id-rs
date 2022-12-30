@@ -13,7 +13,7 @@ mod fs;
 mod message;
 mod time;
 mod tpm2;
-use message::cryptographic_id::SignatureType;
+use message::cryptographic_id::PublicKeyType;
 
 fn show_qrcode(buf: &Vec<u8>) -> Result<(), QrError> {
 	let msg: String = base64::encode(&buf);
@@ -145,7 +145,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 				public_key: keypair.public.to_bytes().to_vec(),
 				timestamp: timestamp,
 				msg: msg.as_bytes().to_vec(),
-				signature_type: SignatureType::Ed25519 as i32,
+				public_key_type: PublicKeyType::Ed25519 as i32,
 				signature: Vec::new(),
 				personal_information: Vec::new(),
 			};

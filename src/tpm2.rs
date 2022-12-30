@@ -5,7 +5,7 @@ use crate::conv;
 use crate::fs;
 use crate::message;
 use crate::time;
-use message::cryptographic_id::SignatureType;
+use message::cryptographic_id::PublicKeyType;
 
 fn id_path(out: &PathBuf) -> PathBuf {
 	let mut out_id = out.clone();
@@ -27,7 +27,7 @@ pub fn build(key_path: PathBuf, msg_path: PathBuf, out: PathBuf)
 		timestamp: timestamp,
 		msg: fs::read_file(msg_path)?,
 		signature: Vec::new(),
-		signature_type: SignatureType::Prime256v1Sha256 as i32,
+		public_key_type: PublicKeyType::Prime256v1 as i32,
 		personal_information: Vec::new(),
 	};
 	let out_id = id_path(&out);
