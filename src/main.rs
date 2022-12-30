@@ -1,75 +1,20 @@
 use std::env;
-use std::fs::File;
-use std::io::BufReader;
-use std::io::Read;
-use std::io::Write;
-use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
 use base64;
 use ed25519_dalek::Keypair;
-use ed25519_dalek::PublicKey;
-use ed25519_dalek::Signature;
-use ed25519_dalek::Signer;
 use prost::Message;
 use qrcode::QrCode;
 use qrcode::types::QrError;
-use rand::rngs::OsRng;
 
 pub mod message {
 	include!(concat!(env!("OUT_DIR"), "/cryptographic_id.rs"));
 }
-
-fn create_keypair() -> Keypair {
-	let mut csprng = OsRng{};
-	let keypair: Keypair = Keypair::generate(&mut csprng);
-	return keypair;
-}
-
-fn sign(keypair: &Keypair, message: &[u8]) -> Signature {
-	let signature = keypair.sign(message);
-	return signature;
-}
-
-fn save_keypair_to_file(key: Keypair, filename: PathBuf) -> io::Result<()> {
-	let secret_key_bytes = key.to_bytes();
-	let mut f = File::create(filename)?;
-	f.write_all(&secret_key_bytes)?;
-	return Ok(());
-}
-
-fn load_keypair_from_file(filename: PathBuf) -> io::Result<Keypair> {
-	let f = File::open(filename)?;
-	let mut reader = BufReader::new(f);
-	let mut buffer = Vec::new();
-	reader.read_to_end(&mut buffer)?;
-	let res = Keypair::from_bytes(&buffer);
-	return match res {
-		Ok(k) => Ok(k),
-		Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
-	}
-}
-
-fn bytes_to_hex(bytes_vec: Vec<u8>) -> String {
-	return bytes_vec.iter().map(
-		|b| format!("{:02x}", b).to_uppercase()
-	).collect::<Vec<String>>().join(":");
-}
-
-fn format_public_key(key: PublicKey) -> String {
-	let bytes_vec = key.to_bytes().to_vec();
-	let hex = bytes_to_hex(bytes_vec);
-	if hex.len() != 95 {
-		return hex;
-	}
-	return vec![
-		hex[0..23].to_string(),
-		hex[24..47].to_string(),
-		hex[48..71].to_string(),
-		hex[72..95].to_string()].join("\n");
-}
+mod fs;
+mod ed25519;
+mod conv;
 
 fn message_to_data(m: &message::CryptographicId)
 		-> Result<Vec<u8>, prost::EncodeError> {
@@ -90,25 +35,25 @@ fn show_qrcode(buf: &Vec<u8>) -> Result<(), QrError> {
 	return Ok(());
 }
 
-fn sign_array(keypair: &Keypair, to_sign_arr: &Vec<Vec<u8>>) -> Vec<u8> {
-	let to_sign: Vec<u8> = to_sign_arr.iter().flat_map(
-		|v| v.iter().copied()).collect();
-	return sign(keypair, &to_sign).to_bytes().to_vec();
-}
-
-fn sign_qrdata(data: &mut message::CryptographicId, keypair: Keypair) {
+fn id_to_sign_arr(data: &message::CryptographicId) -> Vec<Vec<u8>> {
 	let to_sign_arr = [
 		data.timestamp.to_be_bytes().to_vec(),
 		data.public_key.clone(),
 		data.msg.clone()];
-	data.signature = sign_array(&keypair, &to_sign_arr.to_vec());
+	return to_sign_arr.to_vec();
+}
+
+fn sign_qrdata(data: &mut message::CryptographicId, keypair: Keypair) {
+	let to_sign_arr = id_to_sign_arr(&data);
+	data.signature = ed25519::sign_array(&keypair, &to_sign_arr);
 
 	for e in &mut data.personal_information {
 		let e_to_sign_arr = [
 			e.timestamp.to_be_bytes().to_vec(),
 			e.r#type.to_be_bytes().to_vec(),
 			e.value.as_bytes().to_vec()];
-		e.signature = sign_array(&keypair, &e_to_sign_arr.to_vec());
+		e.signature = ed25519::sign_array(
+			&keypair, &e_to_sign_arr.to_vec());
 	}
 }
 
@@ -174,8 +119,8 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 	};
 	match action {
 		Action::CreateKey(path) => {
-			let keypair = create_keypair();
-			return match save_keypair_to_file(keypair, path) {
+			let keypair = ed25519::create_keypair();
+			return match ed25519::save_keypair_to_file(keypair, path) {
 				Ok(()) => {
 					println!("Key created");
 					0
@@ -187,19 +132,19 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 			};
 		},
 		Action::ShowPublicKey(path) => {
-			let keypair = match load_keypair_from_file(path) {
+			let keypair = match ed25519::load_keypair_from_file(path) {
 				Ok(k) => k,
 				Err(e) => {
 					println!("Error loading key: {}", e);
 					return 2;
 				},
 			};
-			let hex = format_public_key(keypair.public);
+			let hex = ed25519::format_public_key(keypair.public);
 			println!("Public Key:\n{}", hex);
 			return 0;
 		},
 		Action::SignWithKey(path, msg) => {
-			let keypair = match load_keypair_from_file(path) {
+			let keypair = match ed25519::load_keypair_from_file(path) {
 				Ok(k) => k,
 				Err(e) => {
 					println!("Error loading key: {}", e);
