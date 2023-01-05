@@ -37,8 +37,8 @@ ATTR="fixedtpm|fixedparent|sensitivedataorigin|userwithauth|restricted|decrypt"
 sign_tpm2() {
 	systemctl start cryptographic_id_helper@tpm2_build.service
 	dir="${1}"
-	set --
 	auth="str:x"
+	policy=""
 	if [ -f "${dir}/pcrs" ]; then
 		pcrs="$(cat "${dir}/pcrs")"
 		tpm2_startauthsession \
@@ -49,7 +49,7 @@ sign_tpm2() {
 			--policy "${TMPDIR}/policy.pcr" \
 			--session "${TMPDIR}/session.ctx" \
 			--pcr-list "sha256:${pcrs}"
-		set -- "--policy" "${TMPDIR}/policy.pcr"
+		policy="${TMPDIR}/policy.pcr"
 		auth="session:${TMPDIR}/session.ctx"
 	fi
 	handle="${TMPDIR}/handle"
@@ -62,7 +62,7 @@ sign_tpm2() {
 			--hash-algorithm sha256 \
 			--key-algorithm ecc256 \
 			--key-context "${TMPDIR}/primary.ctx" \
-			"${@}" \
+			${policy:+"--policy"} ${policy:+"${policy}"} \
 			--attributes "${ATTR}"
 		tpm2_load \
 			--quiet \
