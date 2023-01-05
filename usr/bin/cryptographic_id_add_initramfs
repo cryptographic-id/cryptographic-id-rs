@@ -2,6 +2,8 @@
 DIR="/etc/cryptographic_id/initramfs"
 TMPDIR=
 TMPKEY=
+NL='
+'
 help() {
 	cat << EOF
 Create identity in the initramfs directory. (Rebuild it to include new keys.)
@@ -142,8 +144,12 @@ tpm2)
 		-pubout -out "${key}/public_key.der" > /dev/null
 	dd if="${key}/public_key.der" of="${key}/public_key.raw" \
 		bs=1 skip=26 count=65 status=none
+	hash="$(openssl dgst -sha256 -c --hex < "${key}/public_key.raw" | \
+		tr '[:lower:]' '[:upper:]')"
+	printf "%s\\n\\n" "${hash}"
 	printf "Fingerprint:\\n"
-	openssl dgst -sha256 < "${key}/public_key.raw"
+	printf "%s\\n" "${hash}" | \
+		cut -c 18-40,42-64,66-88,90-113 --output-delimiter "${NL}"
 	cd / || exit 1
 ;;
 *)
