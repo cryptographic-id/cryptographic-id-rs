@@ -70,7 +70,7 @@ dependencies = [
 
 [[package]]
 name = "cryptographic-id-rs"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "base64",
  "ed25519-dalek",
