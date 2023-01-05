@@ -105,6 +105,7 @@ show_identities() {
 		while [ "${res}" != "y" ]; do
 			# Move old qrcode out of screen, so scanning is easier
 			printf "\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n"
+			printf "\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n"
 			printf "Key: %s:\\n" "${file}"
 			printf "\\nEnter message to sign: "
 			read -r msg
