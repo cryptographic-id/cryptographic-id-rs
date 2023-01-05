@@ -2,6 +2,7 @@
 TMPDIR="/tmp/cryptographic_id"
 KEY="/tmp/cryptographic_id/key"
 MSG="/tmp/cryptographic_id/message"
+SIG="/tmp/cryptographic_id/signature"
 QRCODE="/tmp/cryptographic_id/qrcode"
 run_cmd() {
 	/usr/lib/cryptographic_id/cryptographic-id-rs "${@}"
@@ -9,5 +10,11 @@ run_cmd() {
 case "${1}" in
 sign)
 	run_cmd "${1}" "${KEY}" "$(cat "${MSG}")" > "${QRCODE}"
+;;
+tpm2_build)
+	run_cmd "${1}" "${KEY}" "${MSG}" "${TMPDIR}"
+;;
+tpm2_show)
+	run_cmd "${1}" "${SIG}" "${TMPDIR}" > "${QRCODE}"
 ;;
 esac

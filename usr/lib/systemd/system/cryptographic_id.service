@@ -9,13 +9,13 @@ Conflicts=multi-user.target
 Type=oneshot
 ExecStartPre=+/usr/bin/mkdir -p /tmp/cryptographic_id
 ExecStartPre=+/usr/bin/mount -t tmpfs none /tmp/cryptographic_id
-ExecStart=-/usr/bin/sh /usr/lib/cryptographic_id/show_identities
+ExecStart=-/usr/bin/sh /usr/lib/cryptographic_id/show_identities /etc/cryptographic_id/initramfs
 ExecStartPost=+/usr/bin/umount /tmp/cryptographic_id
 
 StandardInput=tty
 StandardOutput=tty
 StandardError=tty
-TimeoutStartSec=infinity
+TimeoutStartSec=10min
 
 IPAddressDeny=any
 LockPersonality=true

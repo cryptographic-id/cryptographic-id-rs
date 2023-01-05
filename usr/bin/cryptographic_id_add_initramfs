@@ -9,8 +9,12 @@ Add a unencrypted identity:
 	${0} insecure NAME
 Add a age-encrypted identity
 	${0} age NAME
-Add a luks encrypted identity (tpm2-pin supported)
+Add a luks encrypted identity (tpm2-pin supported, huge file)
 	${0} cryptsetup NAME
+Add an identity stored in a tpm2
+	${0} tpm2 NAME [--handle-only]
+		--handle-only: dont store sensitive portion of the tpm2-object
+		               key cannot be recoverd if deleted from the tpm2
 EOF
 }
 cleanup() {
@@ -47,11 +51,97 @@ cryptsetup)
 	printf "Create key: %s\\n" "${key}"
 	dd if=/dev/zero of="${key}" bs=20M count=1
 	cryptsetup luksFormat -c aes-xts-plain64 -s 512 -h sha512 "${key}"
-	# systemd-cryptenroll --tpm2-device=/path/to/tpm2_device --tpm2-pcrs=0+7 /dev/sdX
-	cryptsetup open "${key}" cryptographic_id_tmp
+	printf "Use TPM2+Pin (y/n)? "
+	read -r use_tpm
+	if [ "${use_tpm}" = "y" ]; then
+		printf "PCRS to use (e.g. 0+7): "
+		read -r use_pcrs
+		systemd-cryptenroll --tpm2-device=/dev/tpmrm0 \
+			--tpm2-pcrs="${use_pcrs}" "${key}"
+	fi
+	/usr/lib/systemd/systemd-cryptsetup attach cryptographic_id_tmp \
+		"${key}" - tpm2-device=/dev/tpmrm0
 	create_tmpkey
 	dd if="${TMPKEY}" of=/dev/mapper/cryptographic_id_tmp
-	cryptsetup close cryptographic_id_tmp
+	/usr/lib/systemd/systemd-cryptsetup detach cryptographic_id_tmp
+;;
+tpm2)
+	create_tmpdir
+	key="${DIR}/tpm2/${2}"
+	privdir="${key}"
+	case "${3}" in
+	"--handle-only")
+		privdir="${TMPDIR}"
+	;;
+	"")
+		true
+	;;
+	*)
+		printf "Unknown parameter: %s\\n" "${3}"
+		exit 1
+	;;
+	esac
+	mkdir -p "${key}"
+	cd "${TMPDIR}" || exit 1
+	policy=""
+	auth="str:x"
+	create_attribute="|userwithauth"
+	printf "Use PCRs? (empty for none or list of pcrs, e.g. 1,7) "
+	read -r pcrs
+	if [ "${pcrs}" != "" ]; then
+		tpm2_startauthsession -S session.ctx
+		tpm2_policypcr \
+			--quiet \
+			--policy policy.pcr \
+			--session session.ctx \
+			--pcr-list "sha256:${pcrs}"
+		tpm2_flushcontext session.ctx
+		printf "%s" "${pcrs}" > "${key}/pcrs"
+		rm session.ctx
+		policy="yes"
+		auth=""
+		create_attribute=""
+	fi
+	tpm2_createprimary \
+		--quiet \
+		--hierarchy e \
+		--hash-algorithm sha256 \
+		--key-algorithm ecc256 \
+		--key-context primary.ctx \
+		${policy:+"--policy"} ${policy:+"policy.pcr"} \
+		--attributes "fixedtpm|fixedparent|sensitivedataorigin|userwithauth|restricted|decrypt"
+	tpm2_create \
+		--quiet \
+		--key-algorithm ecc256 \
+		--hash-algorithm sha256 \
+		--public "${privdir}/ecc.pub" \
+		--private "${privdir}/ecc.priv" \
+		--parent-context primary.ctx \
+		${policy:+"--policy"} ${policy:+"policy.pcr"} \
+		${auth:+"--key-auth"} ${auth:+"${auth}"} \
+		--format pem \
+		--output "${key}/public_key.pem" \
+		--attributes "fixedtpm|fixedparent|sensitivedataorigin${create_attribute}|noda|sign"
+	if [ "${3}" = "--handle-only" ]; then
+		tpm2_load \
+			--quiet \
+			--parent-context primary.ctx \
+			--public "${privdir}/ecc.pub" \
+			--private "${privdir}/ecc.priv" \
+			--key-context ecc.ctx
+		tpm2_evictcontrol \
+			--quiet \
+			--object-context ecc.ctx \
+			--output "${key}/handle"
+	fi
+	openssl ec -outform der \
+		-pubin -in "${key}/public_key.pem" \
+		-pubout -out "${key}/public_key.der" > /dev/null
+	dd if="${key}/public_key.der" of="${key}/public_key.raw" \
+		bs=1 skip=26 count=65 status=none
+	printf "Fingerprint:\\n"
+	openssl dgst -sha256 < "${key}/public_key.raw"
+	cd / || exit 1
 ;;
 *)
 	help

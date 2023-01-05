@@ -1,43 +1,118 @@
 #!/usr/bin/sh
-DIR="/etc/cryptographic_id/initramfs"
+DIR="${1}"
 TMPDIR="/tmp/cryptographic_id"
 TMPKEY="${TMPDIR}/key"
 
 cat_identity() {
+	[ ! -f "${1}" ] && return 1
 	cp "${1}" "${TMPKEY}"
 }
 
 age_decrypt_identity() {
+	[ ! -f "${1}" ] && return 1
+	printf "Key: %s:\\n" "${1}"
 	for _ in 1 2 3; do
 		age -d -o "${TMPKEY}" "${1}" && return
 	done
 }
 
 cryptsetup_identity() {
+	[ ! -f "${1}" ] && return 1
+	printf "Key: %s:\\n" "${1}"
 	/usr/lib/systemd/systemd-cryptsetup attach cryptographic_id_tmp "${1}" - tpm2-device=/dev/tpmrm0
 	dd if=/dev/mapper/cryptographic_id_tmp of="${TMPKEY}" count=1 bs=64 status=none
 	/usr/lib/systemd/systemd-cryptsetup detach cryptographic_id_tmp
 }
 
+sign_ed25519() {
+	systemctl start cryptographic_id_helper@sign.service
+}
+
+tpm2_identity() {
+	[ ! -d "${1}" ] && return 1
+	cp "${1}/public_key.raw" "${TMPKEY}"
+}
+
+ATTR="fixedtpm|fixedparent|sensitivedataorigin|userwithauth|restricted|decrypt"
+sign_tpm2() {
+	systemctl start cryptographic_id_helper@tpm2_build.service
+	dir="${1}"
+	set --
+	auth="str:x"
+	if [ -f "${dir}/pcrs" ]; then
+		pcrs="$(cat "${dir}/pcrs")"
+		tpm2_startauthsession \
+			-S "${TMPDIR}/session.ctx" \
+			--policy-session
+		tpm2_policypcr \
+			--quiet \
+			--policy "${TMPDIR}/policy.pcr" \
+			--session "${TMPDIR}/session.ctx" \
+			--pcr-list "sha256:${pcrs}"
+		set -- "--policy" "${TMPDIR}/policy.pcr"
+		auth="session:${TMPDIR}/session.ctx"
+	fi
+	handle="${TMPDIR}/handle"
+	if [ -f "${dir}/handle" ]; then
+		handle="${dir}/handle"
+	else
+		tpm2_createprimary \
+			--quiet \
+			--hierarchy e \
+			--hash-algorithm sha256 \
+			--key-algorithm ecc256 \
+			--key-context "${TMPDIR}/primary.ctx" \
+			"${@}" \
+			--attributes "${ATTR}"
+		tpm2_load \
+			--quiet \
+			--parent-context "${TMPDIR}/primary.ctx" \
+			--public "${dir}/ecc.pub" \
+			--private "${dir}/ecc.priv" \
+			--key-context "${handle}"
+	fi
+	tpm2_sign \
+		--key-context "${handle}" \
+		--hash-algorithm sha256 \
+		--scheme ecdsa \
+		--format plain \
+		--auth "${auth}" \
+		--signature "${TMPDIR}/signature" \
+		"${TMPDIR}/to_sign.bin"
+	if [ -f "${TMPDIR}/session.ctx" ]; then
+		tpm2_flushcontext "${TMPDIR}/session.ctx"
+	fi
+	rm -f "${TMPDIR}/ecc.ctx" "${TMPDIR}/primary.ctx"
+	if [ -f "${dir}/pcrs" ]; then
+		rm -f "${TMPDIR}/policy.pcr" "${TMPDIR}/session.ctx"
+	fi
+	systemctl start cryptographic_id_helper@tpm2_show.service
+	rm -f "${TMPDIR}/signature" "${TMPDIR}/message"
+	rm -f "${TMPDIR}/to_sign.bin" "${TMPDIR}/id.bin"
+}
+
 show_identities() {
 	res=""
+	get_key="${2}"
+	sign="${3}"
 	for file in "${DIR}/${1}/"*; do
-		# ignore empty/inexistent directories
-		[ ! -f "${file}" ] && return
-		${2} "${file}"
+		"${get_key}" "${file}" || continue
 		if [ ! -f "${TMPKEY}" ]; then
 			printf "Key does not exist\\n"
 			continue
 		fi
 		res=""
 		while [ "${res}" != "y" ]; do
+			# Move old qrcode out of screen, so scanning is easier
+			printf "\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n"
 			printf "Key: %s:\\n" "${file}"
 			printf "\\nEnter message to sign: "
 			read -r msg
 			printf "%s" "${msg}" > "${TMPDIR}/message"
 			date '+%Y-%m-%d %H:%M:%S'
-			systemctl start cryptographic_id_helper@sign.service
+			"${sign}" "${file}"
 			cat "${TMPDIR}/qrcode"
+			rm -f "${TMPDIR}/qrcode"
 			printf "\\nContinue (y) or create new qr-code (q)? "
 			read -r res
 			printf "\\n"
@@ -47,9 +122,17 @@ show_identities() {
 }
 
 main() {
-	show_identities "insecure" cat_identity
-	show_identities "cryptsetup" cryptsetup_identity
-	show_identities "age" age_decrypt_identity
+	tmpfont=/tmp/cryptographic_id.font
+	if [ -f "${DIR}/font" ]; then
+		setfont "$(cat "${DIR}/font")" -O "${tmpfont}"
+	fi
+	show_identities "insecure" cat_identity sign_ed25519
+	show_identities "tpm2" tpm2_identity sign_tpm2
+	show_identities "cryptsetup" cryptsetup_identity sign_ed25519
+	show_identities "age" age_decrypt_identity sign_ed25519
+	if [ -f "${tmpfont}" ]; then
+		setfont "${tmpfont}"
+	fi
 }
 
 main

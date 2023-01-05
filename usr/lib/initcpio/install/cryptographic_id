@@ -2,9 +2,9 @@
 DIR="/etc/cryptographic_id/initramfs"
 
 build() {
-	add_binary "cat"
-	add_binary "date"
-	add_binary "bwrap"
+	add_binary cat
+	add_binary date
+	add_binary rm
 	add_binary "/usr/lib/cryptographic_id/cryptographic-id-rs"
 	add_file "/usr/bin/cryptographic_id"
 	add_file "/usr/lib/cryptographic_id/initramfs_helper"
@@ -15,6 +15,11 @@ build() {
 		exit 1
 	fi
 	add_full_dir "${DIR}"
+	if [ -f "${DIR}/font" ]; then
+		font="$(cat "${DIR}/font")"
+		add_file "/usr/share/kbd/consolefonts/${font}"*
+		add_binary setfont
+	fi
 	if [ -n "$(ls -A "${DIR}/age")" ]; then
 		add_binary "age"
 	fi
@@ -22,6 +27,15 @@ build() {
 		add_binary "/usr/lib/systemd/systemd-cryptsetup"
 		add_module 'dm-crypt'
 		add_all_modules '/crypto/'
+	fi
+	if [ -n "$(ls -A "${DIR}/tpm2")" ]; then
+		add_binary tpm2_createprimary
+		add_binary tpm2_flushcontext
+		add_binary tpm2_load
+		add_binary tpm2_policypcr
+		add_binary tpm2_sign
+		add_binary tpm2_startauthsession
+		add_checked_modules '/drivers/char/tpm/'
 	fi
 	if type add_systemd_unit &> /dev/null; then
 		add_systemd_unit cryptographic_id.service
