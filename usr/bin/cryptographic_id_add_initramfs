@@ -56,8 +56,11 @@ cryptsetup)
 	if [ "${use_tpm}" = "y" ]; then
 		printf "PCRS to use (e.g. 0+7): "
 		read -r use_pcrs
-		systemd-cryptenroll --tpm2-device=/dev/tpmrm0 \
-			--tpm2-pcrs="${use_pcrs}" "${key}"
+		systemd-cryptenroll \
+			--tpm2-device=/dev/tpmrm0 \
+			--tpm2-with-pin=yes \
+			--tpm2-pcrs="${use_pcrs}" \
+			"${key}"
 	fi
 	/usr/lib/systemd/systemd-cryptsetup attach cryptographic_id_tmp \
 		"${key}" - tpm2-device=/dev/tpmrm0
