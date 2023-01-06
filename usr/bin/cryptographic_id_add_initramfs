@@ -35,18 +35,21 @@ create_tmpkey(){
 	cryptographic_id create "${TMPKEY}"
 	cryptographic_id show "${TMPKEY}"
 }
+umask 0077
 case "${1}" in
 insecure)
 	key="${DIR}/insecure/${2}"
 	printf "Create key: %s\\n" "${key}"
 	cryptographic_id create "${key}"
 	cryptographic_id show "${key}"
+	chmod 400 "${key}"
 ;;
 age)
 	key="${DIR}/age/${2}"
 	printf "Create key: %s\\n" "${key}"
 	create_tmpkey
 	age -p -o "${key}" "${TMPKEY}"
+	chmod 400 "${key}"
 ;;
 cryptsetup)
 	key="${DIR}/cryptsetup/${2}"
@@ -69,6 +72,7 @@ cryptsetup)
 	create_tmpkey
 	dd if="${TMPKEY}" of=/dev/mapper/cryptographic_id_tmp
 	/usr/lib/systemd/systemd-cryptsetup detach cryptographic_id_tmp
+	chmod 400 "${key}"
 ;;
 tpm2)
 	create_tmpdir
@@ -151,6 +155,7 @@ tpm2)
 	printf "%s\\n" "${hash}" | \
 		cut -c 18-40,42-64,66-88,90-113 --output-delimiter "${NL}"
 	cd / || exit 1
+	chmod 400 "${key}"/*
 ;;
 *)
 	help
