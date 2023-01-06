@@ -46,3 +46,7 @@ target/debug/cryptographic-id-rs create path/to/testkey
 target/debug/cryptographic-id-rs show path/to/testkey
 target/debug/cryptographic-id-rs sign path/to/testkey Message
 ```
+
+### Security
+
+This tool is completely sandboxed using systemd. Please review this project and it's dependencies, but it should be enough to review the shell-scripts and the systemd-service files, if you don't have enough time and don't trust this project or it's dependencies.
