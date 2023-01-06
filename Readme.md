@@ -1,6 +1,6 @@
 # cryptographic-id-rs
 
-## Attest the trustworthiness of a device against a human using asymmetric cryptography
+## Attest the trustworthiness of a device using asymmetric cryptography
 
 This tool was developed to replace `tpm2-totp`. A private-key can be created in the tpm2 and used to sign a message. You can scan the qr-code and verify the signature with [this android app](https://gitlab.com/cryptographic_id/cryptographic-id-flutter/). Although this project supports ed25519-keys saved in files, the tpm2-way (prime256v1 keys) is recommended.
 
