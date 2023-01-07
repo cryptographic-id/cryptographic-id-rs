@@ -11,6 +11,11 @@ use_rw_file() {
 }
 run_cmd() {
 	/usr/bin/systemd-run --user --quiet --pty --same-dir \
+		-p "TemporaryFileSystem=/:rw" \
+		-p "BindReadOnlyPaths=/usr" \
+		-p "BindReadOnlyPaths=/lib" \
+		-p "BindReadOnlyPaths=/lib64" \
+		-p "BindPaths=${ADD_RW_FILE}" \
 		-p "AmbientCapabilities=" \
 		-p "CapabilityBoundingSet=" \
 		-p "DeviceAllow=/dev/null" \
@@ -32,14 +37,12 @@ run_cmd() {
 		-p "ProtectKernelTunables=true" \
 		-p "ProtectProc=invisible" \
 		-p "ProtectSystem=strict" \
-		-p "ReadOnlyDirectories=/" \
-		-p "ReadWriteDirectories=${ADD_RW_FILE}" \
 		-p "RemoveIPC=true" \
 		-p "RestrictAddressFamilies=" \
 		-p "RestrictNamespaces=true" \
 		-p "RestrictRealtime=true" \
 		-p "RestrictSUIDSGID=true" \
-		-p "RestrictAddressFamilies=AF_UNIX" \
+		-p "RestrictAddressFamilies=" \
 		-p "SystemCallArchitectures=native" \
 		-p "SystemCallFilter=~@clock" \
 		-p "SystemCallFilter=~@debug" \
