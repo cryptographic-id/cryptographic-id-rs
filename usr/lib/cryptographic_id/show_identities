@@ -122,7 +122,15 @@ show_identities() {
 	done
 }
 
+cleanup() {
+	if [ -f "${tmpfont}" ]; then
+		setfont "${tmpfont}"
+	fi
+	rm -f "${TMPDIR}"/*
+}
+
 main() {
+	trap cleanup EXIT
 	tmpfont=/tmp/cryptographic_id.font
 	if [ -f "${DIR}/font" ]; then
 		setfont "$(cat "${DIR}/font")" -O "${tmpfont}"
@@ -131,9 +139,6 @@ main() {
 	show_identities "tpm2" tpm2_identity sign_tpm2
 	show_identities "cryptsetup" cryptsetup_identity sign_ed25519
 	show_identities "age" age_decrypt_identity sign_ed25519
-	if [ -f "${tmpfont}" ]; then
-		setfont "${tmpfont}"
-	fi
 }
 
 main
