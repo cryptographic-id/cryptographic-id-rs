@@ -55,7 +55,7 @@ age)
 cryptsetup)
 	key="${DIR}/cryptsetup/${2}"
 	printf "Create key: %s\\n" "${key}"
-	dd if=/dev/zero of="${key}" bs=20M count=1
+	truncate -s 20M "${key}"
 	cryptsetup luksFormat -c aes-xts-plain64 -s 512 -h sha512 "${key}"
 	printf "Use TPM2+Pin (y/n)? "
 	read -r use_tpm
