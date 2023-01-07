@@ -3,6 +3,17 @@ DIR="${1}"
 TMPDIR="/tmp/cryptographic_id"
 TMPKEY="${TMPDIR}/key"
 TMPFONT="/tmp/cryptographic_id.font"
+FONT="$(cat "${DIR}/font")"
+
+set_costum_font() {
+	if [ "${FONT}" != "" ]; then
+		if [ -f "${TMPFONT}" ]; then
+			setfont "${FONT}"
+		else
+			setfont "${FONT}" -O "${TMPFONT}"
+		fi
+	fi
+}
 
 cat_identity() {
 	[ ! -f "${1}" ] && return 1
@@ -113,6 +124,9 @@ show_identities() {
 			printf "%s" "${msg}" > "${TMPDIR}/message"
 			date '+%Y-%m-%d %H:%M:%S'
 			"${sign}" "${file}"
+			# set costum font each iteration, to prevent problems
+			# when udev set it to something different
+			set_costum_font
 			cat "${TMPDIR}/qrcode"
 			rm -f "${TMPDIR}/qrcode"
 			printf "\\nContinue (y) or create new qr-code (q)? "
@@ -132,12 +146,6 @@ cleanup() {
 
 main() {
 	trap cleanup EXIT
-	# Wait, so setfont was executed by systemd-vconsole-setup
-	sleep 1
-	font="$(cat "${DIR}/font")"
-	if [ "${font}" != "" ]; then
-		setfont "${font}" -O "${TMPFONT}"
-	fi
 	show_identities "insecure" cat_identity sign_ed25519
 	show_identities "tpm2" tpm2_identity sign_tpm2
 	show_identities "cryptsetup" cryptsetup_identity sign_ed25519
