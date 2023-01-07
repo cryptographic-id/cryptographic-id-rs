@@ -1,0 +1,54 @@
+#!/usr/bin/sh
+help() {
+	cat <<EOF
+Restore the public key of a tpm2 handle or saved private and public portion
+Usage: ${0} DIRECTORY
+EOF
+}
+DIR="${1}"
+if [ "${DIR}" = "" ]; then
+	help
+	exit 1
+fi
+if [ ! -d "${DIR}" ]; then
+	printf "Not a directory: %s\\n" "${DIR}"
+	help
+	exit 1
+fi
+
+handle="${DIR}/handle"
+if [ ! -f "${handle}" ]; then
+	policy=""
+	if [ -f "${DIR}/pcrs" ]; then
+		pcrs="$(cat "${DIR}/pcrs")"
+		tpm2_startauthsession -S session.ctx
+		tpm2_policypcr \
+			--quiet \
+			--policy policy.pcr \
+			--session session.ctx \
+			--pcr-list "sha256:${pcrs}"
+		tpm2_flushcontext session.ctx
+		policy="yes"
+	fi
+
+	tpm2_createprimary \
+		--quiet \
+		--hierarchy e \
+		--hash-algorithm sha256 \
+		--key-algorithm ecc256 \
+		--key-context primary.ctx \
+		${policy:+"--policy"} ${policy:+"policy.pcr"} \
+		--attributes "fixedtpm|fixedparent|sensitivedataorigin|userwithauth|restricted|decrypt"
+	tpm2_load \
+		--parent-context primary.ctx \
+		--public "${DIR}/ecc.pub" \
+		--private "${DIR}/ecc.priv" \
+		--key-context ecc.ctx
+	handle="ecc.ctx"
+fi
+tpm2_readpublic \
+	--output public_key.pem \
+	--format pem \
+	--object-context "${handle}"
+openssl ec -outform der -pubin -in public_key.pem -pubout -out public_key.der
+dd if=public_key.der of=public_key.raw bs=1 skip=26 count=65
