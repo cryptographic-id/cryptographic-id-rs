@@ -18,7 +18,7 @@ build() {
 		exit 1
 	fi
 	add_full_dir "${DIR}"
-	font="$(cat "${DIR}/font" | tr -d ' \t\n')"
+	font="$(tr -d ' \t\n' < "${DIR}/font")"
 	if [ "${font}" != "" ]; then
 		printf "%s" "${font}" > "${BUILDROOT}/${DIR}/font"
 		add_file "/usr/share/kbd/consolefonts/${font}"*
