@@ -2,6 +2,7 @@
 DIR="${1}"
 TMPDIR="/tmp/cryptographic_id"
 TMPKEY="${TMPDIR}/key"
+TMPFONT="/tmp/cryptographic_id.font"
 
 cat_identity() {
 	[ ! -f "${1}" ] && return 1
@@ -123,8 +124,8 @@ show_identities() {
 }
 
 cleanup() {
-	if [ -f "${tmpfont}" ]; then
-		setfont "${tmpfont}"
+	if [ -f "${TMPFONT}" ]; then
+		setfont "${TMPFONT}"
 	fi
 	rm -f "${TMPDIR}"/*
 }
@@ -133,10 +134,9 @@ main() {
 	trap cleanup EXIT
 	# Wait, so setfont was executed by systemd-vconsole-setup
 	sleep 1
-	tmpfont=/tmp/cryptographic_id.font
 	font="$(cat "${DIR}/font")"
 	if [ "${font}" != "" ]; then
-		setfont "${font}" -O "${tmpfont}"
+		setfont "${font}" -O "${TMPFONT}"
 	fi
 	show_identities "insecure" cat_identity sign_ed25519
 	show_identities "tpm2" tpm2_identity sign_tpm2
