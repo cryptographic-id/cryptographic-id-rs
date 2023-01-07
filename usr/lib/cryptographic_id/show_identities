@@ -132,8 +132,9 @@ cleanup() {
 main() {
 	trap cleanup EXIT
 	tmpfont=/tmp/cryptographic_id.font
-	if [ -f "${DIR}/font" ]; then
-		setfont "$(cat "${DIR}/font")" -O "${tmpfont}"
+	font="$(cat "${DIR}/font")"
+	if [ "${font}" != "" ]; then
+		setfont "${font}" -O "${tmpfont}"
 	fi
 	show_identities "insecure" cat_identity sign_ed25519
 	show_identities "tpm2" tpm2_identity sign_tpm2
