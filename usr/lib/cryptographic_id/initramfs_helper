@@ -1,9 +1,9 @@
 #!/usr/bin/sh
 TMPDIR="/tmp/cryptographic_id"
-KEY="/tmp/cryptographic_id/key"
-MSG="/tmp/cryptographic_id/message"
-SIG="/tmp/cryptographic_id/signature"
-QRCODE="/tmp/cryptographic_id/qrcode"
+KEY="${TMPDIR}/key"
+MSG="${TMPDIR}/message"
+SIG="${TMPDIR}/signature"
+QRCODE="${TMPDIR}/qrcode"
 run_cmd() {
 	/usr/lib/cryptographic_id/cryptographic-id-rs "${@}"
 }
