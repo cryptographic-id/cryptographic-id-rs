@@ -16,7 +16,8 @@ Add a luks encrypted identity (tpm2-pin supported, huge file)
 Add an identity stored in a tpm2
 	${0} tpm2 NAME [--handle-only]
 		--handle-only: dont store sensitive portion of the tpm2-object
-		               key cannot be recoverd if deleted from the tpm2
+		               private-key is lost, if handle gets removed
+		               from the tpm2.
 EOF
 }
 cleanup() {
