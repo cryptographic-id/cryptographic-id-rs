@@ -4,9 +4,11 @@ DIR="/etc/cryptographic_id/initramfs"
 build() {
 	add_binary cat
 	add_binary date
+	add_binary mkdir
+	add_binary mount
 	add_binary rm
+	add_binary umount
 	add_binary "/usr/lib/cryptographic_id/cryptographic-id-rs"
-	add_file "/usr/bin/cryptographic_id"
 	add_file "/usr/lib/cryptographic_id/initramfs_helper"
 	add_file "/usr/lib/cryptographic_id/show_identities"
 	add_dir /tmp/cryptographic_id
