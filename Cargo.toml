@@ -1,6 +1,6 @@
 [package]
 name = "cryptographic-id-rs"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Simon Brand <simon.brand@postadigitale.de>"]
 edition = "2021"
 
