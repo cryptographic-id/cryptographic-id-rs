@@ -23,6 +23,10 @@ cryptographic_id_add_initramfs tpm2 KEY_NAME2 --handle-only
 
 To show the qr-codes on boot, add the `cryptographic-id` hook to mkinitcpio and rebuild the initramfs.
 
+### Configuration
+
+If the qr-codes at boot are too big for your screen, you can specify another console-font name in `/etc/cryptographic_id/initramfs/font`. After all qr-codes are shown, the font will be reset to the original one.
+
 ## Why `cryptographic-id` instead of `tpm2-totp`?
 
 `tpm2-totp` uses symmetric cryptography, so every party needs to be in possession of the private key. So if the key cannot be recovered from the tpm2, an attacker could access it on your smartphone. `cryptographic-id` uses asymmetric cryptography, so the key never leaves the tpm2. You can safely have 100 smartphones with the public key stored on it, you can also publish the public-key on the internet.
