@@ -19,7 +19,7 @@ age_decrypt_identity() {
 cryptsetup_identity() {
 	[ ! -f "${1}" ] && return 1
 	printf "Key: %s:\\n" "${1}"
-	/usr/lib/systemd/systemd-cryptsetup attach cryptographic_id_tmp "${1}" - tpm2-device=/dev/tpmrm0
+	/usr/lib/systemd/systemd-cryptsetup attach cryptographic_id_tmp "${1}" - tpm2-device=auto
 	dd if=/dev/mapper/cryptographic_id_tmp of="${TMPKEY}" count=1 bs=64 status=none
 	/usr/lib/systemd/systemd-cryptsetup detach cryptographic_id_tmp
 }
