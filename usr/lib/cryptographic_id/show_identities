@@ -131,6 +131,8 @@ cleanup() {
 
 main() {
 	trap cleanup EXIT
+	# Wait, so setfont was executed by systemd-vconsole-setup
+	sleep 1
 	tmpfont=/tmp/cryptographic_id.font
 	font="$(cat "${DIR}/font")"
 	if [ "${font}" != "" ]; then

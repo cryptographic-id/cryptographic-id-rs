@@ -7,6 +7,7 @@ build() {
 	add_binary mkdir
 	add_binary mount
 	add_binary rm
+	add_binary sleep
 	add_binary umount
 	add_binary "/usr/lib/cryptographic_id/cryptographic-id-rs"
 	add_file "/usr/lib/cryptographic_id/initramfs_helper"
