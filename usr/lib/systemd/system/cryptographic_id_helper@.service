@@ -1,5 +1,6 @@
 [Unit]
 Description=Sandbox helper for cryptographic id
+DefaultDependencies=no
 
 [Service]
 Type=oneshot

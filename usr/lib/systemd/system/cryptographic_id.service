@@ -1,12 +1,16 @@
 [Unit]
 Description=Show cryptographic identities on boot
+DefaultDependencies=no
+After=plymouth-start.service
+After=systemd-vconsole-setup.service
+After=tmp.mount
+Before=initrd-switch-root.service
 Requires=systemd-vconsole-setup.service
-After=plymouth-start.service systemd-vconsole-setup.service
-Before=systemd-ask-password-console.service initrd-switch-root.service cryptsetup.target
-Conflicts=multi-user.target
+Wants=tmp.mount
 
 [Service]
 Type=oneshot
+RemainAfterExit=true
 ExecStartPre=+/usr/bin/mkdir -p /tmp/cryptographic_id
 ExecStartPre=+/usr/bin/mount -t tmpfs none /tmp/cryptographic_id
 ExecStart=-/usr/bin/sh /usr/lib/cryptographic_id/show_identities /etc/cryptographic_id/initramfs
