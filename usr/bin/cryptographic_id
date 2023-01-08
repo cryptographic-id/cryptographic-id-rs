@@ -42,7 +42,6 @@ run_cmd() {
 		-p "RestrictNamespaces=true" \
 		-p "RestrictRealtime=true" \
 		-p "RestrictSUIDSGID=true" \
-		-p "RestrictAddressFamilies=" \
 		-p "SystemCallArchitectures=native" \
 		-p "SystemCallFilter=~@clock" \
 		-p "SystemCallFilter=~@debug" \
