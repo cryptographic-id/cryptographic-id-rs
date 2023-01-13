@@ -31,6 +31,13 @@ If the qr-codes at boot are too big for your screen, you can specify another con
 
 `tpm2-totp` uses symmetric cryptography, so every party needs to be in possession of the private key. So if the key cannot be recovered from the tpm2, an attacker could access it on your smartphone. `cryptographic-id` uses asymmetric cryptography, so the key never leaves the tpm2. You can safely have 100 smartphones with the public key stored on it, you can also publish the public-key on the internet.
 
+## Protect tpm2 against clear command
+
+You can protect your tpm2 against the clear command. This can only be undone in the UEFI or if you have the platform auth.
+```
+tpm2_clearcontrol --hierarchy lockout s
+```
+
 ## Development
 
 ### Build
