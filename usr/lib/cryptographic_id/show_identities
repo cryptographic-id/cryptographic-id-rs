@@ -47,7 +47,6 @@ tpm2_identity() {
 
 ATTR="fixedtpm|fixedparent|sensitivedataorigin|userwithauth|restricted|decrypt"
 sign_tpm2() {
-	systemctl start cryptographic_id_helper@tpm2_build.service
 	dir="${1}"
 	auth="str:x"
 	policy=""
@@ -83,6 +82,7 @@ sign_tpm2() {
 			--private "${dir}/ecc.priv" \
 			--key-context "${handle}"
 	fi
+	systemctl start cryptographic_id_helper@tpm2_build.service
 	tpm2_sign \
 		--key-context "${handle}" \
 		--hash-algorithm sha256 \
