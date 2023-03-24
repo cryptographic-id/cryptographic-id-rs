@@ -24,13 +24,13 @@ cleanup() {
 	umount "${TMPDIR}"
 	rm -rf "${TMPDIR}"
 }
-create_tmpdir() {
+create_tmpdir () {
 	trap cleanup EXIT
 	TMPDIR="$(mktemp -d || exit 1)"
 	mount -t tmpfs tmpfs "${TMPDIR}"
 	chmod 700 "${TMPDIR}"
 }
-create_tmpkey(){
+create_tmpkey () {
 	create_tmpdir
 	TMPKEY="${TMPDIR}/id"
 	cryptographic_id create "${TMPKEY}"
