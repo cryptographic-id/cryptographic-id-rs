@@ -45,13 +45,13 @@ build() {
 		add_systemd_unit cryptographic_id_helper@.service
 		cat <<EOF | add_systemd_drop_in initrd-switch-root.service cryptographic_id
 [Unit]
-Requires=cryptographic_id.service
 After=cryptographic_id.service
+Wants=cryptographic_id.service
 EOF
 		cat <<EOF | add_systemd_drop_in systemd-cryptsetup@.service cryptographic_id
 [Unit]
-Requires=cryptographic_id.service
 After=cryptographic_id.service
+Wants=cryptographic_id.service
 EOF
 	else
 		error "ERR: non-systemd variant not supported"
