@@ -1,7 +1,6 @@
 [Unit]
 Description=Show cryptographic identities on boot
 DefaultDependencies=no
-After=plymouth-start.service
 After=systemd-vconsole-setup.service
 After=tmp.mount
 Before=initrd-switch-root.service
