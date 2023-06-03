@@ -1,0 +1,9 @@
+test:cargo:
+  image: rust:latest
+  script:
+    - apt-get update
+    - apt-get --yes install protobuf-compiler
+    - git submodule update --init --recursive
+    - cargo test --workspace --verbose
+    - cargo install --locked cargo-vet
+    - cargo vet
