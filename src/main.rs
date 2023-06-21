@@ -169,7 +169,9 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 			};
 		},
 		Action::TPM2Build(key_path, msg_path, out_path) => {
-			return match tpm2::build(&key_path, &msg_path, &out_path) {
+			let timestamp = time::now();
+			return match tpm2::build(&key_path, &msg_path,
+			                         timestamp, &out_path) {
 				Ok(_) => 0,
 				Err(e) => {
 					println!("Error while i/o: {}", e);
