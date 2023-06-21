@@ -3,6 +3,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use base64;
+use base64::Engine as _;
 use ed25519_dalek::Keypair;
 use qrcode::QrCode;
 use qrcode::types::QrError;
@@ -16,7 +17,8 @@ mod tpm2;
 use message::cryptographic_id::PublicKeyType;
 
 fn show_qrcode(buf: &Vec<u8>) -> Result<(), QrError> {
-	let msg: String = base64::encode(&buf);
+	let msg: String = base64::engine::general_purpose::STANDARD.encode(
+		&buf);
 	let code = QrCode::new(&msg)?;
 	let string = code.render::<char>()
 		.quiet_zone(false)
