@@ -1,0 +1,15 @@
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+      - run: git submodule update --init --recursive
+      - run: sudo apt-get update
+      - run: sudo apt-get --yes install protobuf-compiler cargo
+      - run: cargo test --workspace --verbose
+      - run: cargo install --locked cargo-vet
+      - run: cargo vet
