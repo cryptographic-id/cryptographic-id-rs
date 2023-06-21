@@ -3,7 +3,6 @@ use std::path::PathBuf;
 
 use base64;
 use base64::Engine as _;
-use ed25519_dalek::Keypair;
 use qrcode::QrCode;
 use qrcode::types::QrError;
 
@@ -25,20 +24,6 @@ fn show_qrcode(buf: &Vec<u8>) -> Result<(), QrError> {
 		.build();
 	println!("{}", string);
 	return Ok(());
-}
-
-fn sign_qrdata(data: &mut message::CryptographicId, keypair: Keypair) {
-	let to_sign_arr = message::to_sign_arr(&data);
-	data.signature = ed25519::sign_array(&keypair, &to_sign_arr);
-
-	for e in &mut data.personal_information {
-		let e_to_sign_arr = [
-			e.timestamp.to_be_bytes().to_vec(),
-			e.r#type.to_be_bytes().to_vec(),
-			e.value.clone()];
-		e.signature = ed25519::sign_array(
-			&keypair, &e_to_sign_arr.to_vec());
-	}
 }
 
 enum Action {
@@ -150,7 +135,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 				signature: Vec::new(),
 				personal_information: Vec::new(),
 			};
-			sign_qrdata(&mut msg, keypair);
+			message::sign(&mut msg, &keypair);
 			let data = match message::to_data(&msg) {
 				Ok(d) => d,
 				Err(e) => {

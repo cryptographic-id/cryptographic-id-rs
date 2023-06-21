@@ -1,7 +1,7 @@
 use std::io;
 use std::path::PathBuf;
 
-use ed25519_dalek::Keypair;
+pub use ed25519_dalek::Keypair;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::Signature;
 use ed25519_dalek::Signer;
