@@ -1,5 +1,4 @@
 use std::env;
-use std::path::Path;
 use std::path::PathBuf;
 
 use base64;
@@ -69,7 +68,7 @@ fn parse_args(args: &Vec<String>) -> Result<Action, ()> {
 	if args.len() < 3 {
 		return Err(());
 	}
-	let key_path = Path::new(&args[2]).to_path_buf();
+	let key_path = fs::to_path_buf(&args[2]);
 	let action = &args[1];
 	if args.len() == 3 {
 		if action == "create" {
@@ -83,14 +82,14 @@ fn parse_args(args: &Vec<String>) -> Result<Action, ()> {
 			let msg = &args[3];
 			return Ok(Action::SignWithKey(key_path, msg.to_string()));
 		} else if action == "tpm2_show" {
-			let out_path = Path::new(&args[3]).to_path_buf();
+			let out_path = fs::to_path_buf(&args[3]);
 			return Ok(Action::TPM2Show(key_path, out_path));
 		}
 	}
 	if args.len() == 5 {
 		if action == "tpm2_build" {
-			let msg_path = Path::new(&args[3]).to_path_buf();
-			let out_path = Path::new(&args[4]).to_path_buf();
+			let msg_path = fs::to_path_buf(&args[3]);
+			let out_path = fs::to_path_buf(&args[4]);
 			return Ok(Action::TPM2Build(key_path, msg_path, out_path));
 		}
 	}
