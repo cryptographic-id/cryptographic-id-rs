@@ -109,7 +109,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 		Action::CreateKey(path) => {
 			let keypair = ed25519::create_keypair();
 			return match ed25519::save_keypair_to_file(keypair,
-			                                           path) {
+			                                           &path) {
 				Ok(()) => {
 					println!("Key created");
 					0
@@ -122,7 +122,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 		},
 		Action::ShowPublicKey(path) => {
 			let keypair = match ed25519::load_keypair_from_file(
-					path) {
+					&path) {
 				Ok(k) => k,
 				Err(e) => {
 					println!("Error loading key: {}", e);
@@ -135,7 +135,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 		},
 		Action::SignWithKey(path, msg) => {
 			let keypair = match ed25519::load_keypair_from_file(
-					path) {
+					&path) {
 				Ok(k) => k,
 				Err(e) => {
 					println!("Error loading key: {}", e);
@@ -170,7 +170,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 			};
 		},
 		Action::TPM2Build(key_path, msg_path, out_path) => {
-			return match tpm2::build(key_path, msg_path, out_path) {
+			return match tpm2::build(&key_path, &msg_path, &out_path) {
 				Ok(_) => 0,
 				Err(e) => {
 					println!("Error while i/o: {}", e);
@@ -179,7 +179,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 			};
 		},
 		Action::TPM2Show(sig_path, out_path) => {
-			let msg = match tpm2::read_id(sig_path, out_path) {
+			let msg = match tpm2::read_id(&sig_path, &out_path) {
 				Ok(d) => d,
 				Err(e) => {
 					println!("Error while i/o: {}", e);

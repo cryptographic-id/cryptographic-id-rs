@@ -39,13 +39,14 @@ pub fn sign_array(keypair: &Keypair, to_sign_arr: &Vec<Vec<u8>>) -> Vec<u8> {
 	return sign(keypair, &to_sign).to_bytes().to_vec();
 }
 
-pub fn save_keypair_to_file(key: Keypair, filename: PathBuf) -> io::Result<()> {
+pub fn save_keypair_to_file(key: Keypair, filename: &PathBuf)
+		-> io::Result<()> {
 	let secret_key_bytes = key.to_bytes();
-	return fs::write_file(secret_key_bytes.to_vec(), filename);
+	return fs::write_file(&secret_key_bytes.to_vec(), filename);
 }
 
-pub fn load_keypair_from_file(filename: PathBuf) -> io::Result<Keypair> {
-	let buffer = fs::read_file(filename)?;
+pub fn load_keypair_from_file(filename: &PathBuf) -> io::Result<Keypair> {
+	let buffer = fs::read_file(&filename)?;
 	let res = Keypair::from_bytes(&buffer);
 	return match res {
 		Ok(k) => Ok(k),
