@@ -18,15 +18,20 @@ pub fn to_sign_arr(data: &CryptographicId) -> Vec<Vec<u8>> {
 	return to_sign_arr.to_vec();
 }
 
+fn personal_info_to_sign_arr(info: &cryptographic_id::PersonalInformation)
+		-> Vec<Vec<u8>> {
+	return [
+		info.timestamp.to_be_bytes().to_vec(),
+		info.r#type.to_be_bytes().to_vec(),
+		info.value.clone()].to_vec();
+}
+
 pub fn sign(data: &mut CryptographicId, keypair: &ed25519::Keypair) {
 	let to_sign_arr = to_sign_arr(&data);
 	data.signature = ed25519::sign_array(&keypair, &to_sign_arr);
 
 	for e in &mut data.personal_information {
-		let e_to_sign_arr = [
-			e.timestamp.to_be_bytes().to_vec(),
-			e.r#type.to_be_bytes().to_vec(),
-			e.value.clone()];
+		let e_to_sign_arr = personal_info_to_sign_arr(&e);
 		e.signature = ed25519::sign_array(
 			&keypair, &e_to_sign_arr.to_vec());
 	}
@@ -77,6 +82,23 @@ mod tests {
 				821_i64.to_be_bytes().to_vec(),
 				b"012345".to_vec(),
 				b"myMessage".to_vec()]);
+	}
+
+	#[test]
+	fn personal_info_to_sign_arr() {
+		let info = PersonalInformation{
+			r#type: PersonalInformationType::PhoneNumber as i32,
+			value: "+123456789".as_bytes().to_vec(),
+			timestamp: 10251251,
+			signature: vec![],
+		};
+		let pn_type = PersonalInformationType::PhoneNumber as i32;
+		assert_eq!(
+			super::personal_info_to_sign_arr(&info),
+			vec![
+				10251251_i64.to_be_bytes().to_vec(),
+				pn_type.to_be_bytes().to_vec(),
+				b"+123456789".to_vec()]);
 	}
 
 	#[test]
