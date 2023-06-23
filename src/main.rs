@@ -1,30 +1,14 @@
 use std::env;
 use std::path::PathBuf;
 
-use base64;
-use base64::Engine as _;
-use qrcode::QrCode;
-use qrcode::types::QrError;
-
 mod conv;
 mod ed25519;
 mod fs;
 mod message;
+mod qrcode;
 mod time;
 mod tpm2;
 use message::cryptographic_id::PublicKeyType;
-
-fn show_qrcode(buf: &Vec<u8>) -> Result<(), QrError> {
-	let msg: String = base64::engine::general_purpose::STANDARD.encode(
-		&buf);
-	let code = QrCode::new(&msg)?;
-	let string = code.render::<char>()
-		.quiet_zone(false)
-		.module_dimensions(2, 1)
-		.build();
-	println!("{}", string);
-	return Ok(());
-}
 
 enum Action {
 	CreateKey(PathBuf),
@@ -144,8 +128,11 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 					return 3;
 				},
 			};
-			return match show_qrcode(&data) {
-				Ok(_) => 0,
+			return match qrcode::as_string(&data) {
+				Ok(s) => {
+					println!("{}", s);
+					0
+				},
 				Err(e) => {
 					println!("Error while encoding \
 					          qrcode: {}", e);
@@ -180,8 +167,11 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 					return 3;
 				},
 			};
-			return match show_qrcode(&data) {
-				Ok(_) => 0,
+			return match qrcode::as_string(&data) {
+				Ok(s) => {
+					println!("{}", s);
+					0
+				},
 				Err(e) => {
 					println!("Error while encoding \
 					          qrcode: {}", e);
