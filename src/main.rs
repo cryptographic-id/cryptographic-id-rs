@@ -92,7 +92,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 	match action {
 		Action::CreateKey(path) => {
 			let keypair = ed25519::create_keypair();
-			return match ed25519::save_keypair_to_file(keypair,
+			return match ed25519::save_keypair_to_file(&keypair,
 			                                           &path) {
 				Ok(()) => {
 					println!("Key created");
@@ -113,7 +113,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 					return 2;
 				},
 			};
-			let hex = ed25519::format_public_key(keypair.public);
+			let hex = ed25519::format_public_key(&keypair.public);
 			println!("Public Key:\n{}", hex);
 			return 0;
 		},
