@@ -13,12 +13,22 @@ Currently there is only a package for Arch Linux available [here](https://aur.ar
 To create a key for the initramfs, use `cryptographic_id_add_initramfs`, e.g:
 
 ```bash
-cryptographic_id_add_initramfs tpm2 KEY_NAME
+# cryptographic_id_add_initramfs tpm2 KEY_NAME
+Use PCRs? (empty for none or list of pcrs, e.g. 1,7) 7,14
+read EC key
+writing EC key
+SHA2-256(STDIN)= 2E:92:40:7E:2D:2D:1D:ED:93:55:68:2C:81:E8:53:42:B3:0B:43:3D:7F:21:95:31:86:59:43:68:54:D9:BA:C7
+
+Fingerprint:
+2E:92:40:7E:2D:2D:1D:ED
+93:55:68:2C:81:E8:53:42
+B3:0B:43:3D:7F:21:95:31
+86:59:43:68:54:D9:BA:C7
 ```
 
 If you don't want to store the sensitive portion of the tpm2-object, you can only save a handle. Keep in mind, if another tool removes the handle from the tpm2, the private-key is lost.
 ```bash
-cryptographic_id_add_initramfs tpm2 KEY_NAME2 --handle-only
+# cryptographic_id_add_initramfs tpm2 KEY_NAME2 --handle-only
 ```
 
 To show the qr-codes on boot, add the `cryptographic-id` hook to dracut or mkinitcpio and rebuild the initramfs.
