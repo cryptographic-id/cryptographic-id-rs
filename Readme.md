@@ -21,7 +21,7 @@ If you don't want to store the sensitive portion of the tpm2-object, you can onl
 cryptographic_id_add_initramfs tpm2 KEY_NAME2 --handle-only
 ```
 
-To show the qr-codes on boot, add the `cryptographic-id` hook to mkinitcpio and rebuild the initramfs.
+To show the qr-codes on boot, add the `cryptographic-id` hook to dracut or mkinitcpio and rebuild the initramfs.
 
 ### Configuration
 
