@@ -92,7 +92,7 @@ version = "0.10.5"
 criteria = "safe-to-deploy"
 
 [[exemptions.libc]]
-version = "0.2.146"
+version = "0.2.147"
 criteria = "safe-to-deploy"
 
 [[exemptions.linux-raw-sys]]
@@ -123,10 +123,6 @@ criteria = "safe-to-deploy"
 version = "0.1.25"
 criteria = "safe-to-deploy"
 
-[[exemptions.proc-macro2]]
-version = "1.0.60"
-criteria = "safe-to-deploy"
-
 [[exemptions.prost]]
 version = "0.11.9"
 criteria = "safe-to-deploy"
@@ -145,6 +141,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.qrcode]]
 version = "0.12.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.quote]]
+version = "1.0.29"
 criteria = "safe-to-deploy"
 
 [[exemptions.rand]]
@@ -176,7 +176,7 @@ version = "0.7.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.rustix]]
-version = "0.37.20"
+version = "0.37.22"
 criteria = "safe-to-deploy"
 
 [[exemptions.serde]]
@@ -189,10 +189,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.signature]]
 version = "1.6.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.subtle]]
-version = "2.5.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.syn]]
@@ -224,7 +220,7 @@ version = "0.48.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.windows-targets]]
-version = "0.48.0"
+version = "0.48.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.windows_aarch64_gnullvm]]
