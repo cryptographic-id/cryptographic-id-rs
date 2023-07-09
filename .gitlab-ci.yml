@@ -2,8 +2,11 @@ test:cargo:
   image: rust:latest
   script:
     - apt-get update
-    - apt-get --yes install protobuf-compiler
+    - apt-get --yes install protobuf-compiler shellcheck
     - git submodule update --init --recursive
+    - shellcheck usr/lib/cryptographic_id/* usr/bin/*
+      usr/lib/initcpio/install/cryptographic-id
+      usr/lib/dracut/modules.d/90cryptographic-id/module-setup.sh
     - cargo test --workspace --verbose
     - cargo install --locked cargo-vet
     - cargo vet
