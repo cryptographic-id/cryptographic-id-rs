@@ -7,6 +7,6 @@ test:cargo:
     - shellcheck usr/lib/cryptographic_id/* usr/bin/*
       usr/lib/initcpio/install/cryptographic-id
       usr/lib/dracut/modules.d/90cryptographic-id/module-setup.sh
-    - cargo test --workspace --verbose
+    - cargo test --workspace --verbose --locked
     - cargo install --locked cargo-vet
     - cargo vet

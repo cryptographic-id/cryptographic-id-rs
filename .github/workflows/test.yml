@@ -13,6 +13,6 @@ jobs:
       - run: shellcheck usr/lib/cryptographic_id/* usr/bin/*
              usr/lib/initcpio/install/cryptographic-id
              usr/lib/dracut/modules.d/90cryptographic-id/module-setup.sh
-      - run: cargo test --workspace --verbose
+      - run: cargo test --workspace --verbose --locked
       - run: cargo install --locked cargo-vet
       - run: cargo vet
