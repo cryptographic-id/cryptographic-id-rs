@@ -4,6 +4,7 @@ DIR="/etc/cryptographic_id/initramfs"
 depends() {
 	echo "dracut-systemd"
 	echo "systemd-initrd"
+	echo "tpm2-tss"
 	return 0
 }
 
@@ -13,7 +14,7 @@ installkernel() {
 		instmods '/crypto/'
 	fi
 	if [ -n "$(ls -A "${DIR}/tpm2")" ]; then
-		instmods '/drivers/char/tpm/'
+		instmods '=drivers/char/tpm'
 	fi
 }
 
@@ -42,10 +43,12 @@ install() {
 		inst_binary setfont
 	fi
 	if [ -n "$(ls -A "${DIR}/age")" ]; then
-		inst_binary "age"
+		inst_binary age
 	fi
 	if [ -n "$(ls -A "${DIR}/cryptsetup")" ]; then
 		inst_binary /usr/lib/systemd/systemd-cryptsetup
+		inst_binary dd
+		inst_libdir_file 'libtss2-tcti-device.so*'
 	fi
 	if [ -n "$(ls -A "${DIR}/tpm2")" ]; then
 		inst_binary tpm2_createprimary
@@ -54,6 +57,8 @@ install() {
 		inst_binary tpm2_policypcr
 		inst_binary tpm2_sign
 		inst_binary tpm2_startauthsession
+		inst "${DIR}"/tpm2/*/*
+		inst_libdir_file 'libtss2-tcti-device.so*'
 	fi
 	# shellcheck disable=SC2154
 	local ssud="${systemdsystemunitdir}"
