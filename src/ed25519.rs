@@ -1,8 +1,9 @@
+use std::array::TryFromSliceError;
 use std::io;
 use std::path::PathBuf;
 
-pub use ed25519_dalek::Keypair;
-use ed25519_dalek::PublicKey;
+pub use ed25519_dalek::SigningKey;
+use ed25519_dalek::VerifyingKey;
 use ed25519_dalek::Signature;
 use ed25519_dalek::Signer;
 use rand::rngs::OsRng;
@@ -10,13 +11,13 @@ use rand::rngs::OsRng;
 use crate::fs;
 use crate::conv;
 
-pub fn create_keypair() -> Keypair {
+pub fn create_keypair() -> SigningKey {
 	let mut csprng = OsRng{};
-	let keypair: Keypair = Keypair::generate(&mut csprng);
+	let keypair: SigningKey = SigningKey::generate(&mut csprng);
 	return keypair;
 }
 
-pub fn format_public_key(key: &PublicKey) -> String {
+pub fn format_verifying_key(key: &VerifyingKey) -> String {
 	let bytes_vec = key.to_bytes().to_vec();
 	let hex = conv::bytes_to_hex(bytes_vec);
 	if hex.len() != 95 {
@@ -29,26 +30,32 @@ pub fn format_public_key(key: &PublicKey) -> String {
 		hex[72..95].to_string()].join("\n");
 }
 
-fn sign(keypair: &Keypair, message: &[u8]) -> Signature {
+fn sign(keypair: &SigningKey, message: &[u8]) -> Signature {
 	let signature = keypair.sign(message);
 	return signature;
 }
 
-pub fn sign_array(keypair: &Keypair, to_sign_arr: &Vec<Vec<u8>>) -> Vec<u8> {
+pub fn sign_array(keypair: &SigningKey, to_sign_arr: &Vec<Vec<u8>>) -> Vec<u8> {
 	let to_sign = conv::flatten_binary_vec(&to_sign_arr);
 	return sign(keypair, &to_sign).to_bytes().to_vec();
 }
 
-pub fn save_keypair_to_file(key: &Keypair, filename: &PathBuf)
+pub fn save_keypair_to_file(key: &SigningKey, filename: &PathBuf)
 		-> io::Result<()> {
-	let secret_key_bytes = key.to_bytes();
+	let secret_key_bytes = key.to_keypair_bytes();
 	return fs::write_file(&secret_key_bytes.to_vec(), filename);
 }
 
-pub fn load_keypair_from_file(filename: &PathBuf) -> io::Result<Keypair> {
+pub fn load_keypair_from_file(filename: &PathBuf) -> io::Result<SigningKey> {
 	let buffer = fs::read_file(&filename)?;
-	let res = Keypair::from_bytes(&buffer);
-	return match res {
+	let res: Result<[u8; 64], TryFromSliceError> = buffer[..].try_into();
+	let arr = match res {
+		Ok(k) => k,
+		Err(e) => {
+			return Err(io::Error::new(io::ErrorKind::Other, e));
+		},
+	};
+	return match SigningKey::from_keypair_bytes(&arr) {
 		Ok(k) => Ok(k),
 		Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
 	}
@@ -58,7 +65,7 @@ pub fn load_keypair_from_file(filename: &PathBuf) -> io::Result<Keypair> {
 mod tests {
 	use tempfile;
 
-	fn load_test_key() -> super::Keypair {
+	fn load_test_key() -> super::SigningKey {
 		let fname = "tests/files/ed25519/test_private_key";
 		return super::load_keypair_from_file(
 			&super::fs::to_path_buf(fname)).unwrap();
@@ -74,10 +81,10 @@ mod tests {
 	}
 
 	#[test]
-	fn format_public_key() {
+	fn format_verifying_key() {
 		let key = load_test_key();
 		assert_eq!(
-			super::format_public_key(&key.public),
+			super::format_verifying_key(&key.verifying_key()),
 			"1C:36:8A:B6:D3:82:2C:B8\n\
 			 BD:55:1F:38:1E:24:5B:27\n\
 			 F0:14:6E:C7:5E:BA:B8:2D\n\
@@ -117,12 +124,12 @@ mod tests {
 		let key = super::load_keypair_from_file(
 			&super::fs::to_path_buf(fname)).unwrap();
 		assert_eq!(
-			key.public.to_bytes(),
+			key.verifying_key().to_bytes(),
 			[28, 54, 138, 182, 211, 130, 44, 184, 189, 85, 31, 56,
 			 30, 36, 91, 39, 240, 20, 110, 199, 94, 186, 184, 45,
 			 84, 43, 95, 221, 243, 170, 215, 186]);
 		assert_eq!(
-			key.secret.to_bytes(),
+			key.to_bytes(),
 			[90, 233, 113, 148, 214, 29, 87, 198, 190, 85, 201,
 			 51, 148, 145, 124, 141, 196, 24, 69, 92, 212, 167,
 			 118, 87, 116, 9, 244, 70, 81, 75, 4, 88]);
@@ -137,8 +144,8 @@ mod tests {
 		let loaded_key = super::load_keypair_from_file(
 			&file_path).unwrap();
 		assert_eq!(
-			key.secret.to_bytes(),
-			loaded_key.secret.to_bytes());
-		assert_eq!(key.public, loaded_key.public);
+			key.to_bytes(),
+			loaded_key.to_bytes());
+		assert_eq!(key.verifying_key(), loaded_key.verifying_key());
 	}
 }

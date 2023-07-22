@@ -26,7 +26,7 @@ fn personal_info_to_sign_arr(info: &cryptographic_id::PersonalInformation)
 		info.value.clone()].to_vec();
 }
 
-pub fn sign(data: &mut CryptographicId, keypair: &ed25519::Keypair) {
+pub fn sign(data: &mut CryptographicId, keypair: &ed25519::SigningKey) {
 	let to_sign_arr = to_sign_arr(&data);
 	data.signature = ed25519::sign_array(&keypair, &to_sign_arr);
 
@@ -119,7 +119,7 @@ mod tests {
 			&fs::to_path_buf(
 				"tests/files/message/sign/key")).unwrap();
 		let mut msg = example_id();
-		msg.public_key = key.public.to_bytes().to_vec();
+		msg.public_key = key.verifying_key().to_bytes().to_vec();
 		message::sign(&mut msg, &key);
 		let exp_result = fs::read_file(
 			&fs::to_path_buf(

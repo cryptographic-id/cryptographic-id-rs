@@ -97,7 +97,8 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 					return 2;
 				},
 			};
-			let hex = ed25519::format_public_key(&keypair.public);
+			let hex = ed25519::format_verifying_key(
+				&keypair.verifying_key());
 			println!("Public Key:\n{}", hex);
 			return 0;
 		},
@@ -112,7 +113,8 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 			};
 			let timestamp = time::now();
 			let mut msg = message::CryptographicId {
-				public_key: keypair.public.to_bytes().to_vec(),
+				public_key: keypair.verifying_key()
+					.to_bytes().to_vec(),
 				timestamp: timestamp,
 				msg: msg.as_bytes().to_vec(),
 				public_key_type: PublicKeyType::Ed25519 as i32,
