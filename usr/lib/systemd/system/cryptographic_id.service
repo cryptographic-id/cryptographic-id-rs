@@ -3,8 +3,8 @@ Description=Show cryptographic identities on boot
 DefaultDependencies=no
 After=systemd-vconsole-setup.service
 After=tmp.mount
-Requires=systemd-vconsole-setup.service
 Wants=tmp.mount
+Wants=systemd-vconsole-setup.service
 # Dracut
 After=dracut-initqueue.service
 Before=dracut-pre-mount.service
