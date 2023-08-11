@@ -1,11 +1,7 @@
-use base64;
-use base64::Engine as _;
 use qrcode::types::QrError;
 use qrcode::QrCode;
 
-pub fn as_string(buf: &Vec<u8>) -> Result<String, QrError> {
-	let msg: String =
-		base64::engine::general_purpose::STANDARD.encode(&buf);
+pub fn as_string(msg: &String) -> Result<String, QrError> {
 	let code = QrCode::new(&msg)?;
 	let string = code
 		.render::<char>()
@@ -21,7 +17,7 @@ mod tests {
 
 	#[test]
 	fn as_string() {
-		let data = vec![61, 12, 83, 23, 72, 61, 23, 61, 7, 9, 1];
+		let data = "PQxTF0g9Fz0HCQE=".to_string();
 		let s = super::as_string(&data).unwrap();
 		assert_eq!(
 			s.as_bytes().to_vec(),

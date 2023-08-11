@@ -4,16 +4,52 @@ use crate::error::DynError;
 use crate::prime256v1;
 use crate::sign::SigningConfig;
 use crate::time;
+
+use base64::Engine;
 use prost::Message;
 
 include!(concat!(env!("OUT_DIR"), "/cryptographic_id.rs"));
 use cryptographic_id::PublicKeyType;
 
-pub fn to_data(m: &CryptographicId) -> Result<Vec<u8>, prost::EncodeError> {
+pub fn to_binary(m: &CryptographicId) -> Result<Vec<u8>, prost::EncodeError> {
 	let mut buf = Vec::new();
 	buf.reserve(m.encoded_len());
 	m.encode(&mut buf)?;
 	return Ok(buf);
+}
+
+pub fn from_binary(
+	data: Vec<u8>,
+) -> Result<CryptographicId, prost::DecodeError> {
+	return CryptographicId::decode(&*data);
+}
+
+pub fn to_base64(m: &CryptographicId) -> Result<String, prost::EncodeError> {
+	return Ok(base64::engine::general_purpose::STANDARD
+		.encode(to_binary(&m)?));
+}
+
+#[derive(Debug)]
+pub enum DecodeError {
+	ProtobufError(prost::DecodeError),
+	Base64Error(base64::DecodeError),
+}
+
+impl From<base64::DecodeError> for DecodeError {
+	fn from(i: base64::DecodeError) -> DecodeError {
+		return DecodeError::Base64Error(i);
+	}
+}
+
+impl From<prost::DecodeError> for DecodeError {
+	fn from(i: prost::DecodeError) -> DecodeError {
+		return DecodeError::ProtobufError(i);
+	}
+}
+
+pub fn from_base64(msg: String) -> Result<CryptographicId, DecodeError> {
+	let b = base64::engine::general_purpose::STANDARD.decode(msg)?;
+	return Ok(from_binary(b)?);
 }
 
 pub fn to_sign_arr(data: &CryptographicId) -> Vec<Vec<u8>> {
@@ -131,6 +167,24 @@ mod tests {
 		};
 	}
 
+	fn example_id_binary() -> Vec<u8> {
+		return [
+			10, 6, 48, 49, 50, 51, 52, 53, 16, 181, 6, 26, 9, 109,
+			121, 77, 101, 115, 115, 97, 103, 101, 82, 10, 18, 5,
+			80, 101, 116, 101, 114, 24, 181, 6, 82, 17, 8, 7, 18,
+			10, 43, 49, 50, 51, 52, 53, 54, 55, 56, 57, 24, 181, 6,
+		]
+		.to_vec();
+	}
+
+	fn example_id_base64() -> String {
+		return format!(
+			"{}{}",
+			"CgYwMTIzNDUQtQYaCW15TWVzc2FnZVIKEgVQZXRlchi1B",
+			"lIRCAcSCisxMjM0NTY3ODkYtQY="
+		);
+	}
+
 	fn signed_example_id() -> message::CryptographicId {
 		let mut key = super::SigningConfig::load(&fs::to_path_buf(
 			TESTKEY_PATH,
@@ -175,18 +229,30 @@ mod tests {
 	}
 
 	#[test]
-	fn to_data() {
+	fn to_binary() {
 		let msg = example_id();
 		assert_eq!(
-			super::to_data(&msg).unwrap(),
-			[
-				10, 6, 48, 49, 50, 51, 52, 53, 16, 181, 6, 26,
-				9, 109, 121, 77, 101, 115, 115, 97, 103, 101,
-				82, 10, 18, 5, 80, 101, 116, 101, 114, 24, 181,
-				6, 82, 17, 8, 7, 18, 10, 43, 49, 50, 51, 52,
-				53, 54, 55, 56, 57, 24, 181, 6
-			]
+			super::to_binary(&msg).unwrap(),
+			example_id_binary()
 		);
+	}
+
+	#[test]
+	fn from_binary() {
+		let msg = super::from_binary(example_id_binary()).unwrap();
+		assert_eq!(msg, example_id());
+	}
+
+	#[test]
+	fn to_base64() {
+		let s = super::to_base64(&example_id());
+		assert_eq!(s, Ok(example_id_base64()));
+	}
+
+	#[test]
+	fn from_base64() {
+		let msg = super::from_base64(example_id_base64()).unwrap();
+		assert_eq!(msg, example_id());
 	}
 
 	#[test]
@@ -201,7 +267,7 @@ mod tests {
 			"tests/files/message/sign/result_ed25519",
 		))
 		.unwrap();
-		assert_eq!(super::to_data(&msg).unwrap(), exp_result);
+		assert_eq!(super::to_binary(&msg).unwrap(), exp_result);
 	}
 
 	#[test]

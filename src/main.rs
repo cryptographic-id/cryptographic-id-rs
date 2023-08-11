@@ -131,7 +131,7 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 				}
 				_ => {}
 			}
-			let data = match message::to_data(&msg) {
+			let data = match message::to_base64(&msg) {
 				Ok(d) => d,
 				Err(e) => {
 					println!(
