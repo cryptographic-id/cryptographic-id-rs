@@ -33,12 +33,6 @@ build() {
 		add_all_modules '/crypto/'
 	fi
 	if [ -n "$(ls -A "${DIR}/tpm2")" ]; then
-		add_binary tpm2_createprimary
-		add_binary tpm2_flushcontext
-		add_binary tpm2_load
-		add_binary tpm2_policypcr
-		add_binary tpm2_sign
-		add_binary tpm2_startauthsession
 		add_checked_modules '/drivers/char/tpm/'
 	fi
 	if type add_systemd_unit &> /dev/null; then

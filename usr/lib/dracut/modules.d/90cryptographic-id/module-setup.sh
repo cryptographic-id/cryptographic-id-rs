@@ -52,12 +52,6 @@ install() {
 		inst_libdir_file 'libtss2-tcti-device.so*'
 	fi
 	if [ -n "$(ls -A "${DIR}/tpm2")" ]; then
-		inst_binary tpm2_createprimary
-		inst_binary tpm2_flushcontext
-		inst_binary tpm2_load
-		inst_binary tpm2_policypcr
-		inst_binary tpm2_sign
-		inst_binary tpm2_startauthsession
 		inst "${DIR}"/tpm2/*/*
 		inst_libdir_file 'libtss2-tcti-device.so*'
 	fi

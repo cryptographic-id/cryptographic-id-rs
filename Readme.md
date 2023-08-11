@@ -26,6 +26,14 @@ B3:0B:43:3D:7F:21:95:31
 86:59:43:68:54:D9:BA:C7
 ```
 
+
+TODO document measure (environment variables, config file, add config file to Makefile)
+what it does, how to enable, how it works
+
+Document apt-get install libtss2-dev dependency
+
+
+
 If you don't want to store the sensitive portion of the tpm2-object, you can only save a handle. Keep in mind, if another tool removes the handle from the tpm2, the private-key is lost.
 ```bash
 # cryptographic_id_add_initramfs tpm2 KEY_NAME2 --handle-only

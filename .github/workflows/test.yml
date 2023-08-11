@@ -16,4 +16,4 @@ jobs:
       - run: shellcheck usr/lib/cryptographic_id/* usr/bin/*
              usr/lib/initcpio/install/cryptographic-id
              usr/lib/dracut/modules.d/90cryptographic-id/module-setup.sh
-      - run: dbus-run-session bash tests/run_test.sh
+      - run: dbus-run-session bash tests/run_test.sh -- --include-ignored

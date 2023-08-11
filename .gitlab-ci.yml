@@ -5,11 +5,12 @@ test:
     - apt-get --yes install protobuf-compiler shellcheck dbus-daemon
       swtpm swtpm-tools tpm2-abrmd tpm2-tools
       libtss2-dev libtss2-tcti-tabrmd0 libtss2-tcti-swtpm0
+      clang
     - git submodule update --init --recursive
     - shellcheck usr/lib/cryptographic_id/* usr/bin/*
       usr/lib/initcpio/install/cryptographic-id
       usr/lib/dracut/modules.d/90cryptographic-id/module-setup.sh
-    - dbus-run-session bash tests/run_test.sh
+    - dbus-run-session bash tests/run_test.sh -- --include-ignored
 
 codespell:
   image: ubuntu

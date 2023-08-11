@@ -2,11 +2,9 @@ use crate::conv;
 use crate::error::DynError;
 use crate::prime256v1;
 use std::path::PathBuf;
-pub use tss_esapi::Error;
 use tss_esapi::{
 	attributes::ObjectAttributesBuilder,
 	constants::{CapabilityType, SessionType},
-	handles::PcrHandle,
 	interface_types::{
 		algorithm::{HashingAlgorithm, PublicAlgorithm, SymmetricMode},
 		ecc::EccCurve,
@@ -17,12 +15,13 @@ use tss_esapi::{
 	structures::{
 		CapabilityData, CreatePrimaryKeyResult, Digest, DigestValues,
 		EccPoint, EccScheme, KeyDerivationFunctionScheme, MaxBuffer,
-		PcrSelectionListBuilder, PcrSlot, Public, PublicBuilder,
+		PcrSelectionListBuilder, Public, PublicBuilder,
 		PublicEccParametersBuilder, SymmetricDefinition,
 		SymmetricDefinitionObject,
 	},
-	Context, TctiNameConf, WrapperErrorKind,
+	TctiNameConf, WrapperErrorKind,
 };
+pub use tss_esapi::{handles::PcrHandle, structures::PcrSlot, Context, Error};
 
 pub fn to_private_file(dir: &PathBuf) -> PathBuf {
 	let mut p = dir.clone();
@@ -233,7 +232,7 @@ pub fn pcr_extend(
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 	use crate::error::DynError;
 	use crate::fs;
 	use crate::tpm2;
@@ -503,7 +502,7 @@ mod tests {
 		return Ok(());
 	}
 
-	fn assert_pcr_bank(
+	pub fn assert_pcr_bank(
 		context: &mut Context,
 		slot: PcrSlot,
 		exp_res: Vec<Digest>,

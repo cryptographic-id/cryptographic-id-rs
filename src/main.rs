@@ -1,22 +1,35 @@
 use std::env;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 
+use nix::libc;
+use nix::sys::signal;
+
+mod actions;
 mod conv;
 mod ed25519;
 mod error;
 mod fs;
 mod message;
 mod qrcode;
+mod scan;
 mod sign;
 mod time;
 mod tpm2;
 use message::cryptographic_id::PublicKeyType;
 mod prime256v1;
 
+static RECEIVED_SIGNAL: AtomicBool = AtomicBool::new(false);
+
+extern "C" fn handle_signal(_signal: libc::c_int) {
+	RECEIVED_SIGNAL.store(true, Ordering::Relaxed);
+}
+
 enum Action {
 	CreateKey(PathBuf),
 	ShowPublicKey(PathBuf),
 	SignWithKey(PathBuf, String),
+	TPM2ScanAndMeasure,
 }
 
 fn print_help() {
@@ -30,17 +43,28 @@ fn print_help() {
 		\tcreate          Create a private key\n\
 		\tsign            Sign own id with message\n\
 		\tshow            Show public key in hex format\n\
+		\tscan_and_measure\n\
+		\t                Scans a QR-code and measures it into a PCR\n\
+		\t                Environment variables:\n\
+		\t                EXTEND_PCR: PCR to use\n\
+		\t                VIDEO: camera to use (/dev/video0)\n\
 		",
 		exe = args[0]
 	);
 }
 
 fn parse_args(args: &Vec<String>) -> Result<Action, ()> {
-	if args.len() < 3 {
+	if args.len() < 2 {
+		return Err(());
+	}
+	let action = &args[1];
+	if args.len() == 2 {
+		if action == "scan_and_measure" {
+			return Ok(Action::TPM2ScanAndMeasure);
+		}
 		return Err(());
 	}
 	let key_path = fs::to_path_buf(&args[2]);
-	let action = &args[1];
 	if args.len() == 3 {
 		if action == "create" {
 			return Ok(Action::CreateKey(key_path));
@@ -162,6 +186,40 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 					4
 				}
 			};
+		}
+		Action::TPM2ScanAndMeasure => {
+			let handler =
+				signal::SigHandler::Handler(handle_signal);
+			match unsafe {
+				signal::signal(signal::Signal::SIGINT, handler)
+			} {
+				Ok(_) => {}
+				Err(e) => {
+					println!(
+						"Failed to setup signal \
+						handler: {}",
+						e
+					);
+					return 6;
+				}
+			};
+
+			let pcr_str = match env::var("EXTEND_PCR") {
+				Ok(s) => s,
+				Err(e) => {
+					println!("EXTEND_PCR not set: {}", e);
+					return 5;
+				}
+			};
+			let cam = match env::var("VIDEO") {
+				Ok(s) => s,
+				Err(_) => "/dev/video0".to_string(),
+			};
+			return actions::tpm2_scan_and_measure(
+				cam,
+				pcr_str,
+				&RECEIVED_SIGNAL,
+			);
 		}
 	};
 }
