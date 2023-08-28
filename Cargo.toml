@@ -5,7 +5,7 @@ authors = ["Simon Brand <simon.brand@postadigitale.de>"]
 edition = "2021"
 
 [dependencies]
-base64 = "0.21.2"
+base64 = "0.21.3"
 ed25519-dalek = { version = "2.0.0", features = ["rand_core"] }
 prost = "0.11.3"
 qrcode = { version = "0.12.0", default-features = false }
