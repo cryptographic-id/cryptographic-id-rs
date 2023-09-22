@@ -1,10 +1,10 @@
-use std::io;
-use std::path::Path;
-use std::path::PathBuf;
 use std::fs::File;
+use std::io;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 
 pub fn to_path_buf(s: &str) -> PathBuf {
 	return Path::new(s).to_path_buf();
@@ -27,6 +27,7 @@ pub fn read_file(filename: &PathBuf) -> io::Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
 	use std::path::Path;
+
 	use crate::fs::io::ErrorKind;
 	use tempfile;
 
@@ -34,7 +35,8 @@ mod tests {
 	fn to_path_buf() {
 		assert_eq!(
 			super::to_path_buf("/my/dir/file"),
-			Path::new("/my/dir/file").to_path_buf());
+			Path::new("/my/dir/file").to_path_buf()
+		);
 	}
 
 	#[test]

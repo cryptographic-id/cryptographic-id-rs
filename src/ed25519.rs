@@ -2,17 +2,17 @@ use std::array::TryFromSliceError;
 use std::io;
 use std::path::PathBuf;
 
-pub use ed25519_dalek::SigningKey;
-use ed25519_dalek::VerifyingKey;
 use ed25519_dalek::Signature;
 use ed25519_dalek::Signer;
+pub use ed25519_dalek::SigningKey;
+use ed25519_dalek::VerifyingKey;
 use rand::rngs::OsRng;
 
-use crate::fs;
 use crate::conv;
+use crate::fs;
 
 pub fn create_keypair() -> SigningKey {
-	let mut csprng = OsRng{};
+	let mut csprng = OsRng {};
 	let keypair: SigningKey = SigningKey::generate(&mut csprng);
 	return keypair;
 }
@@ -27,7 +27,9 @@ pub fn format_verifying_key(key: &VerifyingKey) -> String {
 		hex[0..23].to_string(),
 		hex[24..47].to_string(),
 		hex[48..71].to_string(),
-		hex[72..95].to_string()].join("\n");
+		hex[72..95].to_string(),
+	]
+	.join("\n");
 }
 
 fn sign(keypair: &SigningKey, message: &[u8]) -> Signature {
@@ -40,8 +42,10 @@ pub fn sign_array(keypair: &SigningKey, to_sign_arr: &Vec<Vec<u8>>) -> Vec<u8> {
 	return sign(keypair, &to_sign).to_bytes().to_vec();
 }
 
-pub fn save_keypair_to_file(key: &SigningKey, filename: &PathBuf)
-		-> io::Result<()> {
+pub fn save_keypair_to_file(
+	key: &SigningKey,
+	filename: &PathBuf,
+) -> io::Result<()> {
 	let secret_key_bytes = key.to_keypair_bytes();
 	return fs::write_file(&secret_key_bytes.to_vec(), filename);
 }
@@ -53,12 +57,12 @@ pub fn load_keypair_from_file(filename: &PathBuf) -> io::Result<SigningKey> {
 		Ok(k) => k,
 		Err(e) => {
 			return Err(io::Error::new(io::ErrorKind::Other, e));
-		},
+		}
 	};
 	return match SigningKey::from_keypair_bytes(&arr) {
 		Ok(k) => Ok(k),
 		Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
-	}
+	};
 }
 
 #[cfg(test)]
@@ -67,8 +71,10 @@ mod tests {
 
 	fn load_test_key() -> super::SigningKey {
 		let fname = "tests/files/ed25519/test_private_key";
-		return super::load_keypair_from_file(
-			&super::fs::to_path_buf(fname)).unwrap();
+		return super::load_keypair_from_file(&super::fs::to_path_buf(
+			fname,
+		))
+		.unwrap();
 	}
 
 	#[test]
@@ -88,7 +94,8 @@ mod tests {
 			"1C:36:8A:B6:D3:82:2C:B8\n\
 			 BD:55:1F:38:1E:24:5B:27\n\
 			 F0:14:6E:C7:5E:BA:B8:2D\n\
-			 54:2B:5F:DD:F3:AA:D7:BA");
+			 54:2B:5F:DD:F3:AA:D7:BA"
+		);
 	}
 
 	#[test]
@@ -99,7 +106,10 @@ mod tests {
 		assert_eq!(
 			signature,
 			super::fs::read_file(&super::fs::to_path_buf(
-				"tests/files/ed25519/signature")).unwrap());
+				"tests/files/ed25519/signature"
+			))
+			.unwrap()
+		);
 	}
 
 	#[test]
@@ -110,29 +120,43 @@ mod tests {
 			vec![],
 			vec![12, 23, 22],
 			vec![29],
-			vec![98, 151, 45, 180]];
+			vec![98, 151, 45, 180],
+		];
 		let signature = super::sign_array(&key, &data);
 		assert_eq!(
 			signature,
 			super::fs::read_file(&super::fs::to_path_buf(
-				"tests/files/ed25519/signature")).unwrap());
+				"tests/files/ed25519/signature"
+			))
+			.unwrap()
+		);
 	}
 
 	#[test]
 	fn load_keypair_from_file() {
 		let fname = "tests/files/ed25519/test_private_key";
 		let key = super::load_keypair_from_file(
-			&super::fs::to_path_buf(fname)).unwrap();
+			&super::fs::to_path_buf(fname),
+		)
+		.unwrap();
 		assert_eq!(
 			key.verifying_key().to_bytes(),
-			[28, 54, 138, 182, 211, 130, 44, 184, 189, 85, 31, 56,
-			 30, 36, 91, 39, 240, 20, 110, 199, 94, 186, 184, 45,
-			 84, 43, 95, 221, 243, 170, 215, 186]);
+			[
+				28, 54, 138, 182, 211, 130, 44, 184, 189, 85,
+				31, 56, 30, 36, 91, 39, 240, 20, 110, 199, 94,
+				186, 184, 45, 84, 43, 95, 221, 243, 170, 215,
+				186
+			]
+		);
 		assert_eq!(
 			key.to_bytes(),
-			[90, 233, 113, 148, 214, 29, 87, 198, 190, 85, 201,
-			 51, 148, 145, 124, 141, 196, 24, 69, 92, 212, 167,
-			 118, 87, 116, 9, 244, 70, 81, 75, 4, 88]);
+			[
+				90, 233, 113, 148, 214, 29, 87, 198, 190, 85,
+				201, 51, 148, 145, 124, 141, 196, 24, 69, 92,
+				212, 167, 118, 87, 116, 9, 244, 70, 81, 75, 4,
+				88
+			]
+		);
 	}
 
 	#[test]
@@ -141,11 +165,9 @@ mod tests {
 		let file_path = tmpdir.path().join("save_test");
 		let key = super::create_keypair();
 		super::save_keypair_to_file(&key, &file_path).unwrap();
-		let loaded_key = super::load_keypair_from_file(
-			&file_path).unwrap();
-		assert_eq!(
-			key.to_bytes(),
-			loaded_key.to_bytes());
+		let loaded_key =
+			super::load_keypair_from_file(&file_path).unwrap();
+		assert_eq!(key.to_bytes(), loaded_key.to_bytes());
 		assert_eq!(key.verifying_key(), loaded_key.verifying_key());
 	}
 }

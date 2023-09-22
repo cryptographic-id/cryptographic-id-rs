@@ -5,7 +5,7 @@ pub fn now() -> u64 {
 		Ok(k) => k.as_secs(),
 		Err(_) => {
 			panic!("SystemTime before UNIX EPOCH!");
-		},
+		}
 	};
 }
 

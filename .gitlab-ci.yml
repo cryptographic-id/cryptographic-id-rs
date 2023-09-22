@@ -1,4 +1,4 @@
-test:cargo:
+test:
   image: rust:latest
   script:
     - apt-get update
@@ -9,7 +9,7 @@ test:cargo:
       usr/lib/dracut/modules.d/90cryptographic-id/module-setup.sh
     - cargo test --workspace --verbose --locked
 
-test:codespell:
+codespell:
   image: ubuntu
   script:
     - apt-get update
@@ -17,3 +17,12 @@ test:codespell:
     - git submodule update --init --recursive
     - codespell --skip ./tests/files,./.git --check-filenames
       --ignore-words-list keypair,crate,ba
+
+rustfmt:
+  image: rust:latest
+  script:
+    - apt-get update
+    - apt-get --yes install codespell git
+    - git submodule update --init --recursive
+    - rustup component add rustfmt
+    - cargo fmt

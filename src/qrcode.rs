@@ -1,13 +1,14 @@
 use base64;
 use base64::Engine as _;
-use qrcode::QrCode;
 use qrcode::types::QrError;
+use qrcode::QrCode;
 
 pub fn as_string(buf: &Vec<u8>) -> Result<String, QrError> {
-	let msg: String = base64::engine::general_purpose::STANDARD.encode(
-		&buf);
+	let msg: String =
+		base64::engine::general_purpose::STANDARD.encode(&buf);
 	let code = QrCode::new(&msg)?;
-	let string = code.render::<char>()
+	let string = code
+		.render::<char>()
 		.quiet_zone(false)
 		.module_dimensions(2, 1)
 		.build();
@@ -25,6 +26,9 @@ mod tests {
 		assert_eq!(
 			s.as_bytes().to_vec(),
 			fs::read_file(&fs::to_path_buf(
-				"tests/files/qrcode/as_string")).unwrap());
+				"tests/files/qrcode/as_string"
+			))
+			.unwrap()
+		);
 	}
 }
