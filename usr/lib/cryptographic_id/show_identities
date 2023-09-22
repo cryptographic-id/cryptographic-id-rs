@@ -5,7 +5,7 @@ TMPKEY="${TMPDIR}/key"
 TMPFONT="/tmp/cryptographic_id.font"
 FONT="$(cat "${DIR}/font")"
 
-set_costum_font() {
+set_custom_font() {
 	if [ "${FONT}" != "" ]; then
 		if [ -f "${TMPFONT}" ]; then
 			setfont "${FONT}"
@@ -124,9 +124,9 @@ show_identities() {
 			printf "%s" "${msg}" > "${TMPDIR}/message"
 			date '+%Y-%m-%d %H:%M:%S'
 			"${sign}" "${file}"
-			# set costum font each iteration, to prevent problems
+			# set custom font each iteration, to prevent problems
 			# when udev set it to something different
-			set_costum_font
+			set_custom_font
 			cat "${TMPDIR}/qrcode"
 			rm -f "${TMPDIR}/qrcode"
 			printf "\\nContinue (y) or create new qr-code (q)? "

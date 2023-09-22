@@ -8,3 +8,12 @@ test:cargo:
       usr/lib/initcpio/install/cryptographic-id
       usr/lib/dracut/modules.d/90cryptographic-id/module-setup.sh
     - cargo test --workspace --verbose --locked
+
+test:codespell:
+  image: ubuntu
+  script:
+    - apt-get update
+    - apt-get --yes install codespell git
+    - git submodule update --init --recursive
+    - codespell --skip ./tests/files,./.git --check-filenames
+      --ignore-words-list keypair,crate,ba
