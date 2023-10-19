@@ -5,14 +5,18 @@ authors = ["Simon Brand <simon.brand@postadigitale.de>"]
 edition = "2021"
 
 [dependencies]
+asn1-rs = "0.5"
 base64 = "0.21"
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 prost = "0.12"
 qrcode = { version = "0.12", default-features = false }
 rand = "0.8"
+sha2 = "0.10"
+tss-esapi = { git = "https://github.com/parallaxsecond/rust-tss-esapi.git", rev = "21d426354a8f3cf40f3727388f9c74cd8828e0cd" }
 
 [build-dependencies]
 prost-build = "0.12"
 
 [dev-dependencies]
+p256 = "0.13"
 tempfile = "3.6"

@@ -1,4 +1,7 @@
-use crate::ed25519;
+use crate::conv;
+use crate::sign::SigningConfig;
+#[cfg(test)]
+use crate::test_common::verify_p256;
 use prost::Message;
 
 include!(concat!(env!("OUT_DIR"), "/cryptographic_id.rs"));
@@ -30,20 +33,43 @@ fn personal_info_to_sign_arr(
 	.to_vec();
 }
 
-pub fn sign(data: &mut CryptographicId, keypair: &ed25519::SigningKey) {
+pub fn sign(
+	data: &mut CryptographicId,
+	sign_config: &mut SigningConfig,
+) -> Result<(), Box<dyn std::error::Error>> {
+	data.public_key = sign_config.public_key()?;
+	data.public_key_type = sign_config.public_key_type().into();
 	let to_sign_arr = to_sign_arr(&data);
-	data.signature = ed25519::sign_array(&keypair, &to_sign_arr);
+	let sign_data = conv::flatten_binary_vec(&to_sign_arr);
+	data.signature = sign_config.sign(&sign_data)?;
 
 	for e in &mut data.personal_information {
 		let e_to_sign_arr = personal_info_to_sign_arr(&e);
-		e.signature =
-			ed25519::sign_array(&keypair, &e_to_sign_arr.to_vec());
+		let e_sign_data = conv::flatten_binary_vec(&e_to_sign_arr);
+		e.signature = sign_config.sign(&e_sign_data)?;
 	}
+	return Ok(());
+}
+
+#[cfg(test)]
+pub fn verify(
+	data: &CryptographicId,
+) -> Result<(), Box<dyn std::error::Error>> {
+	let to_sign_arr = to_sign_arr(&data);
+	let sign_data = conv::flatten_binary_vec(&to_sign_arr);
+	verify_p256(&data.public_key, &sign_data, &data.signature)?;
+
+	for e in &data.personal_information {
+		let e_to_sign_arr = personal_info_to_sign_arr(&e);
+		let e_sign_data = conv::flatten_binary_vec(&e_to_sign_arr);
+		verify_p256(&data.public_key, &e_sign_data, &e.signature)?;
+	}
+	return Ok(());
 }
 
 #[cfg(test)]
 mod tests {
-	use crate::ed25519;
+	use crate::error::DynError;
 	use crate::fs;
 	use crate::message;
 	use message::cryptographic_id::PersonalInformation;
@@ -125,18 +151,39 @@ mod tests {
 	}
 
 	#[test]
-	fn sign() {
-		let key = ed25519::load_keypair_from_file(&fs::to_path_buf(
-			"tests/files/message/sign/key",
+	fn sign_ed25519() {
+		let mut key = super::SigningConfig::load(&fs::to_path_buf(
+			"tests/files/message/sign/key_ed25519",
 		))
 		.unwrap();
 		let mut msg = example_id();
-		msg.public_key = key.verifying_key().to_bytes().to_vec();
-		message::sign(&mut msg, &key);
+		message::sign(&mut msg, &mut key).unwrap();
 		let exp_result = fs::read_file(&fs::to_path_buf(
-			"tests/files/message/sign/result",
+			"tests/files/message/sign/result_ed25519",
 		))
 		.unwrap();
 		assert_eq!(super::to_data(&msg).unwrap(), exp_result);
+	}
+
+	#[test]
+	fn sign_tpm2() -> Result<(), DynError> {
+		let mut key = super::SigningConfig::load(&fs::to_path_buf(
+			"tests/files/message/sign/tpm2",
+		))?;
+		let mut msg = example_id();
+		message::sign(&mut msg, &mut key)?;
+		message::verify(&msg)?;
+		assert_eq!(msg.public_key, key.public_key()?);
+		assert_eq!(msg.public_key_type, key.public_key_type() as i32);
+		// verify only signature and public key changed
+		msg.signature = example_id().signature;
+		msg.public_key = example_id().public_key;
+		msg.public_key_type = example_id().public_key_type;
+		msg.personal_information[0].signature =
+			example_id().personal_information[0].signature.clone();
+		msg.personal_information[1].signature =
+			example_id().personal_information[1].signature.clone();
+		assert_eq!(msg, example_id());
+		return Ok(());
 	}
 }

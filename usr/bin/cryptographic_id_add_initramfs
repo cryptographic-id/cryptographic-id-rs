@@ -149,7 +149,8 @@ tpm2)
 		-pubout -out "${key}/public_key.der" > /dev/null
 	dd if="${key}/public_key.der" of="${key}/public_key.raw" \
 		bs=1 skip=26 count=65 status=none
-	hash="$(openssl dgst -sha256 -c --hex < "${key}/public_key.raw" | \
+	hash="$(dd if="${key}/public_key.raw" bs=1 skip=1 | \
+		openssl dgst -sha256 -c --hex | \
 		tr '[:lower:]' '[:upper:]')"
 	printf "%s\\n\\n" "${hash}"
 	printf "Fingerprint:\\n"

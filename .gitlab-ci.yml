@@ -2,12 +2,14 @@ test:
   image: rust:latest
   script:
     - apt-get update
-    - apt-get --yes install protobuf-compiler shellcheck
+    - apt-get --yes install protobuf-compiler shellcheck dbus-daemon
+      swtpm swtpm-tools tpm2-abrmd tpm2-tools
+      libtss2-dev libtss2-tcti-tabrmd0 libtss2-tcti-swtpm0
     - git submodule update --init --recursive
     - shellcheck usr/lib/cryptographic_id/* usr/bin/*
       usr/lib/initcpio/install/cryptographic-id
       usr/lib/dracut/modules.d/90cryptographic-id/module-setup.sh
-    - cargo test --workspace --verbose --locked
+    - dbus-run-session bash tests/run_test.sh
 
 codespell:
   image: ubuntu

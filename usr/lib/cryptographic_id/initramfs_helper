@@ -1,20 +1,8 @@
 #!/usr/bin/sh
 TMPDIR="/tmp/cryptographic_id"
-KEY="${TMPDIR}/key"
-MSG="${TMPDIR}/message"
-SIG="${TMPDIR}/signature"
 QRCODE="${TMPDIR}/qrcode"
-run_cmd() {
+KEY="$(systemd-escape --unescape "${1}")"
+run_binary() {
 	/usr/lib/cryptographic_id/cryptographic-id-rs "${@}"
 }
-case "${1}" in
-sign)
-	run_cmd "${1}" "${KEY}" "$(cat "${MSG}")" > "${QRCODE}"
-;;
-tpm2_build)
-	run_cmd "${1}" "${KEY}" "${MSG}" "${TMPDIR}"
-;;
-tpm2_show)
-	run_cmd "${1}" "${SIG}" "${TMPDIR}" > "${QRCODE}"
-;;
-esac
+run_binary sign "${KEY}" "$(cat "${MSG}")" > "${QRCODE}"

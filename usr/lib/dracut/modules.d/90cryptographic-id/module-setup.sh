@@ -24,6 +24,7 @@ install() {
 	inst_binary mkdir
 	inst_binary mount
 	inst_binary rm
+	inst_binary systemd-escape
 	inst_binary umount
 	inst_binary /usr/lib/cryptographic_id/cryptographic-id-rs
 	inst /usr/lib/cryptographic_id/initramfs_helper

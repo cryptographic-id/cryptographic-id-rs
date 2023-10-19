@@ -68,6 +68,14 @@ target/debug/cryptographic-id-rs show path/to/testkey
 target/debug/cryptographic-id-rs sign path/to/testkey Message
 ```
 
+### Tests
+
+To run the tests, you need swtpm and tpm2-abrmd installed.
+
+```bash
+dbus-run-session bash tests/run_test.sh
+```
+
 ### Security
 
 The rust part of this tool is completely sandboxed using systemd. Please review this project and it's dependencies, but it should be enough to review the shell-scripts and the systemd-service files, if you don't have enough time and don't trust this project or it's dependencies.

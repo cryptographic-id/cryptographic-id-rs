@@ -36,71 +36,18 @@ cryptsetup_identity() {
 	/usr/lib/systemd/systemd-cryptsetup detach cryptographic_id_tmp
 }
 
-sign_ed25519() {
-	systemctl start cryptographic_id_helper@sign.service
+sign_helper_tmpkey() {
+	sign_helper "${TMPKEY}"
+}
+
+sign_helper() {
+	param="$(systemd-escape "${1}")"
+	systemctl start "cryptographic_id_helper@${param}.service"
 }
 
 tpm2_identity() {
 	[ ! -d "${1}" ] && return 1
 	cp "${1}/public_key.raw" "${TMPKEY}"
-}
-
-ATTR="fixedtpm|fixedparent|sensitivedataorigin|userwithauth|restricted|decrypt"
-sign_tpm2() {
-	dir="${1}"
-	auth="str:x"
-	policy=""
-	if [ -f "${dir}/pcrs" ]; then
-		pcrs="$(cat "${dir}/pcrs")"
-		tpm2_startauthsession \
-			-S "${TMPDIR}/session.ctx" \
-			--policy-session
-		tpm2_policypcr \
-			--quiet \
-			--policy "${TMPDIR}/policy.pcr" \
-			--session "${TMPDIR}/session.ctx" \
-			--pcr-list "sha256:${pcrs}"
-		policy="${TMPDIR}/policy.pcr"
-		auth="session:${TMPDIR}/session.ctx"
-	fi
-	handle="${TMPDIR}/handle"
-	if [ -f "${dir}/handle" ]; then
-		handle="${dir}/handle"
-	else
-		tpm2_createprimary \
-			--quiet \
-			--hierarchy e \
-			--hash-algorithm sha256 \
-			--key-algorithm ecc256 \
-			--key-context "${TMPDIR}/primary.ctx" \
-			${policy:+"--policy"} ${policy:+"${policy}"} \
-			--attributes "${ATTR}"
-		tpm2_load \
-			--quiet \
-			--parent-context "${TMPDIR}/primary.ctx" \
-			--public "${dir}/ecc.pub" \
-			--private "${dir}/ecc.priv" \
-			--key-context "${handle}"
-	fi
-	systemctl start cryptographic_id_helper@tpm2_build.service
-	tpm2_sign \
-		--key-context "${handle}" \
-		--hash-algorithm sha256 \
-		--scheme ecdsa \
-		--format plain \
-		--auth "${auth}" \
-		--signature "${TMPDIR}/signature" \
-		"${TMPDIR}/to_sign.bin"
-	if [ -f "${TMPDIR}/session.ctx" ]; then
-		tpm2_flushcontext "${TMPDIR}/session.ctx"
-	fi
-	rm -f "${TMPDIR}/ecc.ctx" "${TMPDIR}/primary.ctx"
-	if [ -f "${dir}/pcrs" ]; then
-		rm -f "${TMPDIR}/policy.pcr" "${TMPDIR}/session.ctx"
-	fi
-	systemctl start cryptographic_id_helper@tpm2_show.service
-	rm -f "${TMPDIR}/signature" "${TMPDIR}/message"
-	rm -f "${TMPDIR}/to_sign.bin" "${TMPDIR}/id.bin"
 }
 
 show_identities() {
@@ -146,10 +93,10 @@ cleanup() {
 
 main() {
 	trap cleanup EXIT
-	show_identities "insecure" cat_identity sign_ed25519
-	show_identities "tpm2" tpm2_identity sign_tpm2
-	show_identities "cryptsetup" cryptsetup_identity sign_ed25519
-	show_identities "age" age_decrypt_identity sign_ed25519
+	show_identities "insecure" cat_identity sign_helper
+	show_identities "tpm2" tpm2_identity sign_helper
+	show_identities "cryptsetup" cryptsetup_identity sign_helper_tmpkey
+	show_identities "age" age_decrypt_identity sign_helper_tmpkey
 }
 
 main

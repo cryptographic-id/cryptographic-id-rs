@@ -1,16 +1,21 @@
 [Unit]
 Description=Sandbox helper for cryptographic id
 DefaultDependencies=no
+After=dev-tpmrm0.device
 
 [Service]
 Type=oneshot
 ExecStart=-/usr/bin/sh /usr/lib/cryptographic_id/initramfs_helper %I
 
 TemporaryFileSystem=/:rw
+BindReadOnlyPaths=/etc/cryptographic_id
 BindReadOnlyPaths=/usr
 BindReadOnlyPaths=/lib
 BindReadOnlyPaths=/lib64
 BindPaths=/tmp/cryptographic_id
+BindPaths=-/dev/tpmrm0
+DeviceAllow=/dev/tpmrm0
+Environment=TCTI=device:/dev/tpmrm0
 
 AmbientCapabilities=
 CapabilityBoundingSet=

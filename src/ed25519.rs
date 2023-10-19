@@ -2,13 +2,15 @@ use std::array::TryFromSliceError;
 use std::io;
 use std::path::PathBuf;
 
-use ed25519_dalek::Signature;
-use ed25519_dalek::Signer;
 pub use ed25519_dalek::SigningKey;
-use ed25519_dalek::VerifyingKey;
+#[cfg(test)]
+use ed25519_dalek::{Signature, Verifier};
+use ed25519_dalek::{Signer, VerifyingKey};
 use rand::rngs::OsRng;
 
 use crate::conv;
+#[cfg(test)]
+use crate::error::DynError;
 use crate::fs;
 
 pub fn create_keypair() -> SigningKey {
@@ -32,14 +34,21 @@ pub fn format_verifying_key(key: &VerifyingKey) -> String {
 	.join("\n");
 }
 
-fn sign(keypair: &SigningKey, message: &[u8]) -> Signature {
+pub fn sign(keypair: &SigningKey, message: &[u8]) -> Vec<u8> {
 	let signature = keypair.sign(message);
-	return signature;
+	return signature.to_bytes().to_vec();
 }
 
-pub fn sign_array(keypair: &SigningKey, to_sign_arr: &Vec<Vec<u8>>) -> Vec<u8> {
-	let to_sign = conv::flatten_binary_vec(&to_sign_arr);
-	return sign(keypair, &to_sign).to_bytes().to_vec();
+#[cfg(test)]
+pub fn verify(
+	verifying_key: &[u8],
+	message: &[u8],
+	signature: &[u8],
+) -> Result<(), DynError> {
+	let key = VerifyingKey::from_bytes(verifying_key.try_into()?)?;
+	let sig = Signature::from_bytes(signature.try_into()?);
+	key.verify(message, &sig)?;
+	return Ok(());
 }
 
 pub fn save_keypair_to_file(
@@ -67,6 +76,7 @@ pub fn load_keypair_from_file(filename: &PathBuf) -> io::Result<SigningKey> {
 
 #[cfg(test)]
 mod tests {
+	use ed25519_dalek::Signature;
 	use tempfile;
 
 	fn load_test_key() -> super::SigningKey {
@@ -83,7 +93,8 @@ mod tests {
 		let key = super::create_keypair();
 		let data = vec![5, 72, 24, 82, 23, 92, 24, 38, 151, 45, 2];
 		let sig = super::sign(&key, &data);
-		key.verify(&data, &sig).unwrap();
+		let sig_arr: [u8; 64] = sig.try_into().unwrap();
+		key.verify(&data, &Signature::from_bytes(&sig_arr)).unwrap();
 	}
 
 	#[test]
@@ -102,27 +113,7 @@ mod tests {
 	fn sign() {
 		let key = load_test_key();
 		let data = vec![72, 24, 12, 23, 22, 29, 98, 151, 45, 180];
-		let signature = super::sign(&key, &data).to_bytes().to_vec();
-		assert_eq!(
-			signature,
-			super::fs::read_file(&super::fs::to_path_buf(
-				"tests/files/ed25519/signature"
-			))
-			.unwrap()
-		);
-	}
-
-	#[test]
-	fn sign_array() {
-		let key = load_test_key();
-		let data = vec![
-			vec![72, 24],
-			vec![],
-			vec![12, 23, 22],
-			vec![29],
-			vec![98, 151, 45, 180],
-		];
-		let signature = super::sign_array(&key, &data);
+		let signature = super::sign(&key, &data);
 		assert_eq!(
 			signature,
 			super::fs::read_file(&super::fs::to_path_buf(
