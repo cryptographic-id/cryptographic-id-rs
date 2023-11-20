@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 asn1-rs = "0.5"
 base64 = "0.21"
-ed25519-dalek = { version = "2.0", features = ["rand_core"] }
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
 prost = "0.12"
 qrcode = { version = "0.12", default-features = false }
 rand = "0.8"
