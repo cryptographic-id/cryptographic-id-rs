@@ -19,4 +19,4 @@ prost-build = "0.12"
 
 [dev-dependencies]
 p256 = "0.13"
-tempfile = "3.6"
+tempfile = "3.8"
