@@ -39,7 +39,6 @@ pub fn sign(keypair: &SigningKey, message: &[u8]) -> Vec<u8> {
 	return signature.to_bytes().to_vec();
 }
 
-#[cfg(test)]
 pub fn verify(
 	verifying_key: &[u8],
 	message: &[u8],
@@ -121,6 +120,26 @@ mod tests {
 			))
 			.unwrap()
 		);
+	}
+
+	#[test]
+	fn verify() {
+		let key = load_test_key();
+		let mut data = vec![72, 24, 12, 23, 22, 29, 98, 151, 45, 180];
+		let verifying_key = key.verifying_key().to_bytes().to_vec();
+		let mut signature =
+			super::fs::read_file(&super::fs::to_path_buf(
+				"tests/files/ed25519/signature",
+			))
+			.unwrap();
+		super::verify(&verifying_key, &data, &signature).unwrap();
+		data[2] = 18;
+		assert!(super::verify(&verifying_key, &data, &signature)
+			.is_err());
+		data[2] = 12;
+		signature[17] = 4;
+		assert!(super::verify(&verifying_key, &data, &signature)
+			.is_err());
 	}
 
 	#[test]
