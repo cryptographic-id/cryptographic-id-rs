@@ -1,10 +1,13 @@
 use crate::conv;
+use crate::ed25519;
+use crate::error::DynError;
+use crate::prime256v1;
 use crate::sign::SigningConfig;
-#[cfg(test)]
-use crate::test_common::verify_p256;
+use crate::time;
 use prost::Message;
 
 include!(concat!(env!("OUT_DIR"), "/cryptographic_id.rs"));
+use cryptographic_id::PublicKeyType;
 
 pub fn to_data(m: &CryptographicId) -> Result<Vec<u8>, prost::EncodeError> {
 	let mut buf = Vec::new();
@@ -51,20 +54,43 @@ pub fn sign(
 	return Ok(());
 }
 
-#[cfg(test)]
-pub fn verify(
-	data: &CryptographicId,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn verify(data: &CryptographicId) -> Result<(), DynError> {
+	let is_ed25519 = data.public_key_type == PublicKeyType::Ed25519 as i32;
 	let to_sign_arr = to_sign_arr(&data);
 	let sign_data = conv::flatten_binary_vec(&to_sign_arr);
-	verify_p256(&data.public_key, &sign_data, &data.signature)?;
+	let verifier = if is_ed25519 {
+		ed25519::verify
+	} else {
+		prime256v1::verify
+	};
+	verifier(&data.public_key, &sign_data, &data.signature)?;
 
 	for e in &data.personal_information {
 		let e_to_sign_arr = personal_info_to_sign_arr(&e);
 		let e_sign_data = conv::flatten_binary_vec(&e_to_sign_arr);
-		verify_p256(&data.public_key, &e_sign_data, &e.signature)?;
+		verifier(&data.public_key, &e_sign_data, &e.signature)?;
 	}
 	return Ok(());
+}
+
+pub fn verify_current_with_msg(
+	data: &CryptographicId,
+	msg: &String,
+) -> Result<(), String> {
+	if data.msg != msg.as_bytes().to_vec() {
+		return Err(format!("Wrong message, please share {}", msg));
+	}
+	let now = time::now();
+	if data.timestamp > now + 5 {
+		return Err(format!("Signature in the future"));
+	}
+	if data.timestamp < now - time::ONE_MINUTE_IN_SEC {
+		return Err(format!("Signature older than 1m"));
+	}
+	return match verify(&data) {
+		Ok(()) => Ok(()),
+		Err(e) => Err(format!("Wrong signature: {}", e)),
+	};
 }
 
 #[cfg(test)]
@@ -75,6 +101,8 @@ mod tests {
 	use message::cryptographic_id::PersonalInformation;
 	use message::cryptographic_id::PersonalInformationType;
 	use message::cryptographic_id::PublicKeyType;
+	use prost::Message;
+	const TESTKEY_PATH: &str = "tests/files/message/sign/key_ed25519";
 
 	fn example_id() -> message::CryptographicId {
 		let first_name_type = PersonalInformationType::FirstName;
@@ -101,6 +129,17 @@ mod tests {
 				},
 			],
 		};
+	}
+
+	fn signed_example_id() -> message::CryptographicId {
+		let mut key = super::SigningConfig::load(&fs::to_path_buf(
+			TESTKEY_PATH,
+		))
+		.unwrap();
+		let mut msg = example_id();
+		msg.public_key = key.public_key().unwrap();
+		message::sign(&mut msg, &mut key).unwrap();
+		return msg;
 	}
 
 	#[test]
@@ -184,6 +223,137 @@ mod tests {
 		msg.personal_information[1].signature =
 			example_id().personal_information[1].signature.clone();
 		assert_eq!(msg, example_id());
+		return Ok(());
+	}
+
+	#[test]
+	fn verify_ed25519() {
+		let msg = signed_example_id();
+		message::verify(&msg).unwrap();
+
+		fn test_mod<F>(f: F)
+		where
+			F: Fn(&mut message::CryptographicId),
+		{
+			let mut msg = signed_example_id();
+			f(&mut msg);
+			assert!(message::verify(&msg).is_err());
+		}
+		test_mod(|a| {
+			a.public_key[4] = 2;
+		});
+		test_mod(|a| {
+			a.timestamp = 1234;
+		});
+		test_mod(|a| {
+			a.msg = b"haha".to_vec();
+		});
+		test_mod(|a| {
+			a.public_key_type = PublicKeyType::Prime256v1 as i32;
+		});
+		test_mod(|a| {
+			a.signature[10] = 18;
+		});
+		test_mod(|a| a.personal_information[0].r#type = 50);
+		test_mod(|a| a.personal_information[0].value[4] = 50);
+		test_mod(|a| a.personal_information[1].timestamp = 50);
+		test_mod(|a| a.personal_information[1].signature[4] = 50);
+	}
+
+	fn signed_prime256v1_message() -> message::CryptographicId {
+		let data = fs::read_file(&fs::to_path_buf(
+			"tests/files/message/verify_prime256v1",
+		))
+		.unwrap();
+		return message::CryptographicId::decode(&*data).unwrap();
+	}
+
+	#[test]
+	fn verify_prime256v1() {
+		let msg = signed_prime256v1_message();
+		message::verify(&msg).unwrap();
+
+		fn test_mod<F>(f: F)
+		where
+			F: Fn(&mut message::CryptographicId),
+		{
+			let mut msg = signed_prime256v1_message();
+			f(&mut msg);
+			assert!(message::verify(&msg).is_err());
+		}
+		test_mod(|a| {
+			a.public_key[4] = 2;
+		});
+		test_mod(|a| {
+			a.timestamp = 1234;
+		});
+		test_mod(|a| {
+			a.msg = b"haha".to_vec();
+		});
+		test_mod(|a| {
+			a.public_key_type = PublicKeyType::Ed25519 as i32;
+		});
+		test_mod(|a| {
+			a.signature[10] = 18;
+		});
+		test_mod(|a| a.personal_information[0].r#type = 50);
+		test_mod(|a| a.personal_information[0].value[4] = 50);
+		test_mod(|a| a.personal_information[1].timestamp = 50);
+		test_mod(|a| a.personal_information[1].signature[4] = 50);
+	}
+
+	#[test]
+	fn verify_current_with_msg() -> Result<(), DynError> {
+		let mut key = super::SigningConfig::load(&fs::to_path_buf(
+			TESTKEY_PATH,
+		))
+		.unwrap();
+		let mut msg = example_id();
+		let now = super::time::now();
+		let correct_msg = "myMessage".to_string();
+		msg.public_key = key.public_key().unwrap();
+		// still in the range
+		msg.timestamp = now + 3;
+		message::sign(&mut msg, &mut key)?;
+		super::verify_current_with_msg(&msg, &correct_msg).unwrap();
+
+		// oldest possible
+		msg.timestamp = now - super::time::ONE_MINUTE_IN_SEC + 2;
+		message::sign(&mut msg, &mut key)?;
+		super::verify_current_with_msg(&msg, &correct_msg).unwrap();
+
+		// wrong msg
+		assert_eq!(
+			super::verify_current_with_msg(
+				&msg,
+				&"1234".to_string()
+			),
+			Err("Wrong message, please share 1234".to_string())
+		);
+		// in the future
+		msg.timestamp = now + 7;
+		message::sign(&mut msg, &mut key)?;
+		assert_eq!(
+			super::verify_current_with_msg(&msg, &&correct_msg),
+			Err("Signature in the future".to_string())
+		);
+		// in the past
+		msg.timestamp = now - super::time::ONE_MINUTE_IN_SEC - 1;
+		message::sign(&mut msg, &mut key)?;
+		assert_eq!(
+			super::verify_current_with_msg(&msg, &&correct_msg),
+			Err("Signature older than 1m".to_string())
+		);
+		// wrong sig
+		msg.timestamp = now - 1;
+		message::sign(&mut msg, &mut key)?;
+		msg.timestamp = now - 3;
+		let err = super::verify_current_with_msg(&msg, &&correct_msg);
+		assert!(err.is_err());
+		match err {
+			Err(e) => assert!(e.starts_with("Wrong signature: ")),
+			_ => (),
+		}
 		return Ok(());
 	}
 }

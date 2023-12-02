@@ -11,8 +11,7 @@ mod sign;
 mod time;
 mod tpm2;
 use message::cryptographic_id::PublicKeyType;
-#[cfg(test)]
-mod test_common;
+mod prime256v1;
 
 enum Action {
 	CreateKey(PathBuf),

@@ -3,13 +3,10 @@ use std::io;
 use std::path::PathBuf;
 
 pub use ed25519_dalek::SigningKey;
-#[cfg(test)]
-use ed25519_dalek::{Signature, Verifier};
-use ed25519_dalek::{Signer, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
 
 use crate::conv;
-#[cfg(test)]
 use crate::error::DynError;
 use crate::fs;
 

@@ -1,5 +1,7 @@
 use std::time::SystemTime;
 
+pub const ONE_MINUTE_IN_SEC: u64 = 60;
+
 pub fn now() -> u64 {
 	return match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
 		Ok(k) => k.as_secs(),

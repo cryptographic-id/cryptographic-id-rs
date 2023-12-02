@@ -193,7 +193,7 @@ impl Tpm2SigningConfig {
 #[cfg(test)]
 mod test {
 	use super::PcrSlot;
-	use crate::test_common::verify_p256;
+	use crate::prime256v1;
 	use crate::tpm2::sign::DynError;
 	use std::path::PathBuf;
 	use tss_esapi::{
@@ -313,7 +313,7 @@ mod test {
 		for _ in 0..5 {
 			let message = b"testmessage".to_vec();
 			let signature = sign_config.sign(&message)?;
-			verify_p256(&pubkey, &message, &signature)?;
+			prime256v1::verify(&pubkey, &message, &signature)?;
 		}
 		return Ok(());
 	}

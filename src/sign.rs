@@ -74,7 +74,7 @@ mod test {
 	use crate::ed25519;
 	use crate::error::DynError;
 	use crate::fs;
-	use crate::test_common::verify_p256;
+	use crate::prime256v1;
 
 	#[test]
 	fn signing_config_tpm2() -> Result<(), DynError> {
@@ -102,7 +102,7 @@ mod test {
 		);
 		let msg = b"ADifferentTestMessage".to_vec();
 		let sig = sign_config.sign(&msg)?;
-		verify_p256(&pubkey, &msg, &sig)?;
+		prime256v1::verify(&pubkey, &msg, &sig)?;
 		return Ok(());
 	}
 

@@ -8,6 +8,7 @@ edition = "2021"
 asn1-rs = "0.5"
 base64 = "0.21"
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
+p256 = "0.13"
 prost = "0.12"
 qrcode = { version = "0.12", default-features = false }
 rand = "0.8"
@@ -18,5 +19,4 @@ tss-esapi = { git = "https://github.com/parallaxsecond/rust-tss-esapi.git", rev 
 prost-build = "0.12"
 
 [dev-dependencies]
-p256 = "0.13"
 tempfile = "3.6"
