@@ -8,7 +8,7 @@ KILL_PIDS=()
 cleanup_pids() {
 	for pid in "${KILL_PIDS[@]}"; do
 		if kill -0 "${pid}" &> /dev/null; then
-			kill "${pid}" || true
+			kill "${@}" "${pid}" || true
 		fi
 	done
 }
@@ -16,6 +16,7 @@ cleanup() {
 	local pid
 	swtpm_ioctl --tcp 127.0.0.1:2322 -s
 	cleanup_pids
+	sleep 0.1
 	cleanup_pids -9
 	rm -rf "${TMPDIR}"
 }
