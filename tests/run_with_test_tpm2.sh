@@ -34,8 +34,11 @@ sleep 0.1 # Wait until started
 # in gitlab container, tests are running as root
 /usr/sbin/tpm2-abrmd --session --allow-root --tcti=swtpm &
 KILL_PIDS+=("$!")
+sha1="0000000000000000000000000000000000000000"
 sha256="0000000000000000000000000000000000000000000000000000000000000000"
 tpm2_pcrextend \
 	"5:sha256=0x${sha256}" \
-	"7:sha256=0x${sha256}"
+	"7:sha256=0x${sha256}" \
+	"13:sha1=0x${sha1}" \
+	"13:sha256=0x${sha256}"
 "${@}"

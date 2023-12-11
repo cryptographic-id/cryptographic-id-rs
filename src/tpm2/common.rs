@@ -5,7 +5,8 @@ use std::path::PathBuf;
 pub use tss_esapi::Error;
 use tss_esapi::{
 	attributes::ObjectAttributesBuilder,
-	constants::SessionType,
+	constants::{CapabilityType, SessionType},
+	handles::PcrHandle,
 	interface_types::{
 		algorithm::{HashingAlgorithm, PublicAlgorithm, SymmetricMode},
 		ecc::EccCurve,
@@ -14,8 +15,8 @@ use tss_esapi::{
 		session_handles::AuthSession,
 	},
 	structures::{
-		CreatePrimaryKeyResult, Digest, EccPoint, EccScheme,
-		KeyDerivationFunctionScheme, MaxBuffer,
+		CapabilityData, CreatePrimaryKeyResult, Digest, DigestValues,
+		EccPoint, EccScheme, KeyDerivationFunctionScheme, MaxBuffer,
 		PcrSelectionListBuilder, PcrSlot, Public, PublicBuilder,
 		PublicEccParametersBuilder, SymmetricDefinition,
 		SymmetricDefinitionObject,
@@ -50,6 +51,11 @@ pub fn to_handle_file(dir: &PathBuf) -> PathBuf {
 pub fn str_to_pcr(s: &str) -> Result<PcrSlot, DynError> {
 	let num: u32 = s.parse()?;
 	return Ok(PcrSlot::try_from(1 << num)?);
+}
+
+pub fn str_to_pcrhandle(s: &str) -> Result<PcrHandle, DynError> {
+	let num: u32 = s.parse()?;
+	return Ok(PcrHandle::try_from(num)?);
 }
 
 pub fn create_context() -> Result<Context, Error> {
@@ -194,6 +200,43 @@ pub fn format_public_key(public: &Public) -> Result<String, DynError> {
 	.join("\n"));
 }
 
+fn get_supported_hash_algorithms(
+	ctx: &mut Context,
+) -> Result<Vec<HashingAlgorithm>, Error> {
+	let (cap, _more) =
+		ctx.get_capability(CapabilityType::AssignedPcr, 0, 255)?;
+	if let CapabilityData::AssignedPcr(selections) = cap {
+		return Ok(selections
+			.get_selections()
+			.iter()
+			.filter(|s| !s.is_empty())
+			.map(|s| s.hashing_algorithm())
+			.collect());
+	}
+	return Err(Error::WrapperError(WrapperErrorKind::WrongValueFromTpm));
+}
+
+pub fn pcr_extend(
+	ctx: &mut Context,
+	pcr: PcrHandle,
+	data: Vec<u8>,
+) -> Result<(), Error> {
+	let mut digest_values = DigestValues::new();
+	let buffer = MaxBuffer::try_from(data.to_vec())?;
+	let hash_algs = get_supported_hash_algorithms(ctx)?;
+	for hash_alg in hash_algs {
+		let (digest, _ticket) = ctx.execute_without_session(|c| {
+			c.hash(buffer.clone(), hash_alg, Hierarchy::Endorsement)
+		})?;
+		digest_values.set(hash_alg, digest.clone());
+	}
+
+	ctx.execute_with_nullauth_session(|c| {
+		return c.pcr_extend(pcr, digest_values);
+	})?;
+	return Ok(());
+}
+
 #[cfg(test)]
 mod tests {
 	use crate::error::DynError;
@@ -205,8 +248,9 @@ mod tests {
 			resource_handles::Hierarchy,
 			session_handles::PolicySession,
 		},
-		structures::{Digest, Ticket},
+		structures::{Digest, PcrSlot, Ticket},
 		traits::Marshall,
+		Context,
 	};
 
 	#[test]
@@ -251,6 +295,27 @@ mod tests {
 		assert_eq!(super::str_to_pcr("6")?, super::PcrSlot::Slot6);
 		assert_eq!(super::str_to_pcr("7")?, super::PcrSlot::Slot7);
 		assert_eq!(super::str_to_pcr("14")?, super::PcrSlot::Slot14);
+		return Ok(());
+	}
+
+	#[test]
+	fn str_to_pcrhandle() -> Result<(), DynError> {
+		assert_eq!(
+			super::str_to_pcrhandle("4")?,
+			super::PcrHandle::Pcr4
+		);
+		assert_eq!(
+			super::str_to_pcrhandle("6")?,
+			super::PcrHandle::Pcr6
+		);
+		assert_eq!(
+			super::str_to_pcrhandle("13")?,
+			super::PcrHandle::Pcr13
+		);
+		assert_eq!(
+			super::str_to_pcrhandle("14")?,
+			super::PcrHandle::Pcr14
+		);
 		return Ok(());
 	}
 
@@ -424,6 +489,76 @@ mod tests {
 			42:87:25:87:1D:8C:40:EF\n\
 			73:80:F1:74:3A:AC:45:C9"
 		);
+		return Ok(());
+	}
+
+	#[test]
+	fn get_supported_hash_algorithms() -> Result<(), DynError> {
+		let mut ctx = super::create_context()?;
+		let res = super::get_supported_hash_algorithms(&mut ctx)?;
+		assert_eq!(
+			res,
+			vec![
+				super::HashingAlgorithm::Sha1,
+				super::HashingAlgorithm::Sha256
+			]
+		);
+		return Ok(());
+	}
+
+	fn assert_pcr_bank(
+		context: &mut Context,
+		slot: PcrSlot,
+		exp_res: Vec<Digest>,
+	) -> Result<(), DynError> {
+		let pcrs = vec![slot];
+		let pcr_selection_list = super::PcrSelectionListBuilder::new()
+			.with_selection(
+				super::HashingAlgorithm::Sha1,
+				pcrs.as_slice(),
+			)
+			.with_selection(
+				super::HashingAlgorithm::Sha256,
+				pcrs.as_slice(),
+			)
+			.build()?;
+		let (_, _, pcr_digests) =
+			context.pcr_read(pcr_selection_list)?;
+		// pcr_read returns sha1 and sha256 in random order
+		let mut res = pcr_digests
+			.value()
+			.iter()
+			.map(|d| {
+				Digest::try_from(d.as_bytes().to_vec()).unwrap()
+			})
+			.collect::<Vec<Digest>>();
+		res.sort_by_key(|d| d.as_bytes().len());
+		assert_eq!(exp_res, res);
+		return Ok(());
+	}
+
+	#[test]
+	fn pcr_extend() -> Result<(), DynError> {
+		let mut ctx = super::create_context()?;
+		super::pcr_extend(
+			&mut ctx,
+			super::PcrHandle::Pcr13,
+			vec![
+				14, 43, 193, 154, 79, 84, 184, 205, 132, 170,
+				14, 43, 193, 154, 79, 84, 184, 205, 132, 170,
+				14, 43, 193, 154, 79, 84, 184, 205, 132,
+			],
+		)?;
+		let sha1 = Digest::try_from(vec![
+			31, 177, 22, 2, 220, 185, 80, 137, 124, 110, 47, 180,
+			186, 160, 61, 195, 183, 246, 215, 174,
+		])?;
+		let sha256 = Digest::try_from(vec![
+			75, 255, 0, 102, 197, 203, 33, 135, 238, 244, 54, 88,
+			218, 180, 151, 159, 110, 225, 93, 2, 91, 17, 95, 147,
+			17, 39, 44, 240, 149, 99, 246, 105,
+		])?;
+		assert_pcr_bank(&mut ctx, PcrSlot::Slot13, vec![sha1, sha256])?;
 		return Ok(());
 	}
 }
