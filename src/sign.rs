@@ -43,9 +43,7 @@ impl SigningConfig {
 	pub fn fingerprint(self: &Self) -> Result<String, DynError> {
 		return Ok(match self {
 			SigningConfig::Ed25519(s) => {
-				ed25519::format_verifying_key(
-					&s.verifying_key(),
-				)
+				ed25519::fingerprint_hex(&s.verifying_key())?
 			}
 			SigningConfig::Tpm2(t) => t.fingerprint()?,
 		});
@@ -118,10 +116,10 @@ mod test {
 		assert_eq!(sign_config.public_key()?, pubkey);
 		assert_eq!(
 			sign_config.fingerprint()?,
-			"5E:B7:3E:1C:4A:70:BA:4A\n\
-			39:98:4B:95:7F:96:1A:6D\n\
-			04:04:07:7F:48:4D:8F:81\n\
-			B7:E4:9C:92:51:D2:19:F9"
+			"A3:94:89:7D:6A:B8:00:E1\n\
+			E3:16:59:09:0A:7E:36:A4\n\
+			5A:AE:C3:C6:90:66:C3:F8\n\
+			A3:34:94:C3:58:74:F4:4E"
 		);
 		assert_eq!(
 			sign_config.public_key_type(),
