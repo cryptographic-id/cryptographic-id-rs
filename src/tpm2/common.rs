@@ -177,11 +177,15 @@ pub fn public_key(public: &Public) -> Result<Vec<u8>, DynError> {
 		)));
 	};
 	let uncompressed: u8 = 4;
+	// TODO: compress it for smaller qr-codes
 	let key = conv::flatten_binary_vec(&vec![
 		vec![uncompressed],
 		unique.x().as_bytes().to_vec(),
 		unique.y().as_bytes().to_vec(),
 	]);
+	if key.len() != 65 {
+		return Err("TPM2 did not return uncompressed key".into());
+	}
 	return Ok(key);
 }
 
