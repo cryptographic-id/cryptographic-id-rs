@@ -139,8 +139,8 @@ impl Tpm2SigningConfig {
 		return tpm2::public_key(&self.public);
 	}
 
-	pub fn fingerprint(self: &Self) -> Result<String, DynError> {
-		return tpm2::format_public_key(&self.public);
+	pub fn fingerprint(self: &Self) -> Result<Vec<u8>, DynError> {
+		return tpm2::fingerprint(&self.public);
 	}
 
 	pub fn sign(
@@ -390,10 +390,12 @@ mod test {
 		let sign_config = super::Tpm2SigningConfig::load(&dir)?;
 		assert_eq!(
 			sign_config.fingerprint()?,
-			"25:0E:F9:F7:0F:EA:47:19\n\
-			59:05:17:A6:85:1F:FE:10\n\
-			0B:DB:1F:2B:4F:AA:93:07\n\
-			E8:43:02:BD:A5:F6:55:85"
+			vec![
+				37, 14, 249, 247, 15, 234, 71, 25, 89, 5, 23,
+				166, 133, 31, 254, 16, 11, 219, 31, 43, 79,
+				170, 147, 7, 232, 67, 2, 189, 165, 246, 85,
+				133
+			]
 		);
 		return Ok(());
 	}

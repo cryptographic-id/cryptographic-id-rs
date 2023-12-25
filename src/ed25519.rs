@@ -2,13 +2,11 @@ use std::array::TryFromSliceError;
 use std::io;
 use std::path::PathBuf;
 
-use sha2::Digest as Sha2Digest;
-
 pub use ed25519_dalek::SigningKey;
 use ed25519_dalek::{Signature, Signer, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
+use sha2::Digest as Sha2Digest;
 
-use crate::conv;
 use crate::error::DynError;
 use crate::fs;
 
@@ -22,21 +20,6 @@ pub fn fingerprint(verifying_key: &VerifyingKey) -> Result<Vec<u8>, DynError> {
 	let mut hasher = sha2::Sha256::new();
 	hasher.update(verifying_key);
 	return Ok(hasher.finalize().to_vec());
-}
-
-pub fn fingerprint_hex(key: &VerifyingKey) -> Result<String, DynError> {
-	let bytes_vec = fingerprint(key)?;
-	let hex = conv::bytes_to_hex(bytes_vec);
-	if hex.len() != 95 {
-		return Ok(hex);
-	}
-	return Ok(vec![
-		hex[0..23].to_string(),
-		hex[24..47].to_string(),
-		hex[48..71].to_string(),
-		hex[72..95].to_string(),
-	]
-	.join("\n"));
 }
 
 pub fn sign(keypair: &SigningKey, message: &[u8]) -> Vec<u8> {
@@ -112,18 +95,6 @@ mod tests {
 				84, 175, 77, 202, 182, 149, 196, 114, 76, 188,
 				183, 1
 			]
-		);
-	}
-
-	#[test]
-	fn fingerprint_hex() {
-		let key = load_test_key();
-		assert_eq!(
-			super::fingerprint_hex(&key.verifying_key()).unwrap(),
-			"0B:2D:C0:79:4B:D8:42:A1\n\
-			C2:41:2E:E0:CA:4E:7B:FE\n\
-			76:FA:B5:F9:54:AF:4D:CA\n\
-			B6:95:C4:72:4C:BC:B7:01"
 		);
 	}
 

@@ -185,19 +185,11 @@ pub fn public_key(public: &Public) -> Result<Vec<u8>, DynError> {
 	return Ok(key);
 }
 
-pub fn format_public_key(public: &Public) -> Result<String, DynError> {
+pub fn fingerprint(public: &Public) -> Result<Vec<u8>, DynError> {
 	let key = public_key(&public)?;
 	let mut hasher = sha2::Sha256::new();
 	hasher.update(&key[1..]);
-	let bytes_vec = hasher.finalize();
-	let hex = conv::bytes_to_hex(bytes_vec.to_vec());
-	return Ok(vec![
-		hex[0..23].to_string(),
-		hex[24..47].to_string(),
-		hex[48..71].to_string(),
-		hex[72..95].to_string(),
-	]
-	.join("\n"));
+	return Ok(hasher.finalize().to_vec());
 }
 
 fn get_supported_hash_algorithms(
@@ -478,16 +470,18 @@ mod tests {
 	}
 
 	#[test]
-	fn format_public_key() -> Result<(), DynError> {
+	fn fingerprint() -> Result<(), DynError> {
 		let public = tpm2::read_public_file(&fs::to_path_buf(
 			"tests/files/tpm2/common/public",
 		))?;
 		assert_eq!(
-			super::format_public_key(&public)?,
-			"EA:E2:A2:E4:A4:0E:86:8E\n\
-			23:60:CB:DC:02:BB:7B:EB\n\
-			42:87:25:87:1D:8C:40:EF\n\
-			73:80:F1:74:3A:AC:45:C9"
+			super::fingerprint(&public)?,
+			vec![
+				234, 226, 162, 228, 164, 14, 134, 142, 35, 96,
+				203, 220, 2, 187, 123, 235, 66, 135, 37, 135,
+				29, 140, 64, 239, 115, 128, 241, 116, 58, 172,
+				69, 201
+			]
 		);
 		return Ok(());
 	}

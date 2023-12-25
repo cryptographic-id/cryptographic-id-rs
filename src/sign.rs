@@ -1,3 +1,4 @@
+use crate::conv;
 use crate::ed25519;
 pub use crate::ed25519::SigningKey;
 use crate::error::DynError;
@@ -41,12 +42,13 @@ impl SigningConfig {
 	}
 
 	pub fn fingerprint(self: &Self) -> Result<String, DynError> {
-		return Ok(match self {
+		let bytes = match self {
 			SigningConfig::Ed25519(s) => {
-				ed25519::fingerprint_hex(&s.verifying_key())?
+				ed25519::fingerprint(&s.verifying_key())?
 			}
 			SigningConfig::Tpm2(t) => t.fingerprint()?,
-		});
+		};
+		return Ok(conv::fingerprint_to_hex(&bytes));
 	}
 
 	pub fn public_key_type(self: &Self) -> PublicKeyType {
