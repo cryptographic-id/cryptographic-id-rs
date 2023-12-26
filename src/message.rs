@@ -90,6 +90,19 @@ pub fn sign(
 	return Ok(());
 }
 
+pub fn fingerprint(data: &CryptographicId) -> Result<Vec<u8>, DynError> {
+	if data.public_key_type == PublicKeyType::Ed25519.into() {
+		let bytes = data.public_key.as_slice().try_into()?;
+		let key = ed25519::VerifyingKey::from_bytes(&bytes)?;
+		return Ok(ed25519::fingerprint(&key)?);
+	} else {
+		let key = prime256v1::VerifyingKey::from_sec1_bytes(
+			&data.public_key,
+		)?;
+		return Ok(prime256v1::fingerprint(&key)?);
+	}
+}
+
 pub fn verify(data: &CryptographicId) -> Result<(), DynError> {
 	let is_ed25519 = data.public_key_type == PublicKeyType::Ed25519 as i32;
 	let to_sign_arr = to_sign_arr(&data);
@@ -185,7 +198,7 @@ mod tests {
 		);
 	}
 
-	fn signed_example_id() -> message::CryptographicId {
+	fn signed_example_id_ed25519() -> message::CryptographicId {
 		let mut key = super::SigningConfig::load(&fs::to_path_buf(
 			TESTKEY_PATH,
 		))
@@ -294,14 +307,14 @@ mod tests {
 
 	#[test]
 	fn verify_ed25519() {
-		let msg = signed_example_id();
+		let msg = signed_example_id_ed25519();
 		message::verify(&msg).unwrap();
 
 		fn test_mod<F>(f: F)
 		where
 			F: Fn(&mut message::CryptographicId),
 		{
-			let mut msg = signed_example_id();
+			let mut msg = signed_example_id_ed25519();
 			f(&mut msg);
 			assert!(message::verify(&msg).is_err());
 		}
@@ -332,6 +345,31 @@ mod tests {
 		))
 		.unwrap();
 		return message::CryptographicId::decode(&*data).unwrap();
+	}
+
+	#[test]
+	fn fingerprint() -> Result<(), DynError> {
+		let p256_msg = signed_prime256v1_message();
+		assert_eq!(
+			super::fingerprint(&p256_msg)?,
+			vec![
+				37, 14, 249, 247, 15, 234, 71, 25, 89, 5, 23,
+				166, 133, 31, 254, 16, 11, 219, 31, 43, 79,
+				170, 147, 7, 232, 67, 2, 189, 165, 246, 85,
+				133
+			]
+		);
+		let ed25519_msg = signed_example_id_ed25519();
+		assert_eq!(
+			super::fingerprint(&ed25519_msg)?,
+			vec![
+				101, 82, 102, 168, 36, 174, 45, 89, 6, 178,
+				113, 79, 120, 111, 19, 50, 15, 198, 239, 109,
+				62, 149, 56, 184, 126, 74, 170, 106, 123, 94,
+				251, 108
+			]
+		);
+		return Ok(());
 	}
 
 	#[test]

@@ -2,8 +2,8 @@ use std::array::TryFromSliceError;
 use std::io;
 use std::path::PathBuf;
 
-pub use ed25519_dalek::SigningKey;
-use ed25519_dalek::{Signature, Signer, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, Verifier};
+pub use ed25519_dalek::{SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 use sha2::Digest as Sha2Digest;
 
