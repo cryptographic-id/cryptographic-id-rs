@@ -1,6 +1,7 @@
 use crate::error::DynError;
 use ed25519_dalek::Verifier;
-use p256::ecdsa::{Signature, VerifyingKey};
+use p256::ecdsa::Signature;
+pub use p256::ecdsa::VerifyingKey;
 use sha2::Digest;
 
 pub fn verify(

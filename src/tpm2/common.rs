@@ -1,6 +1,6 @@
 use crate::conv;
 use crate::error::DynError;
-use sha2::Digest as Sha2Digest;
+use crate::prime256v1;
 use std::path::PathBuf;
 pub use tss_esapi::Error;
 use tss_esapi::{
@@ -191,9 +191,8 @@ pub fn public_key(public: &Public) -> Result<Vec<u8>, DynError> {
 
 pub fn fingerprint(public: &Public) -> Result<Vec<u8>, DynError> {
 	let key = public_key(&public)?;
-	let mut hasher = sha2::Sha256::new();
-	hasher.update(&key[1..]);
-	return Ok(hasher.finalize().to_vec());
+	let verifying_key = prime256v1::VerifyingKey::from_sec1_bytes(&key)?;
+	return Ok(prime256v1::fingerprint(&verifying_key)?);
 }
 
 fn get_supported_hash_algorithms(
