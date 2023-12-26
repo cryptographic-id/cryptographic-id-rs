@@ -52,6 +52,14 @@ pub fn from_base64(msg: String) -> Result<CryptographicId, DecodeError> {
 	return Ok(from_binary(b)?);
 }
 
+pub fn to_public_key_type(s: i32) -> Result<PublicKeyType, DynError> {
+	return match s {
+		0 => Ok(PublicKeyType::Ed25519),
+		1 => Ok(PublicKeyType::Prime256v1),
+		_ => Err("Unknown public key type".into()),
+	};
+}
+
 pub fn to_sign_arr(data: &CryptographicId) -> Vec<Vec<u8>> {
 	let to_sign_arr = [
 		data.timestamp.to_be_bytes().to_vec(),
@@ -91,26 +99,27 @@ pub fn sign(
 }
 
 pub fn fingerprint(data: &CryptographicId) -> Result<Vec<u8>, DynError> {
-	if data.public_key_type == PublicKeyType::Ed25519.into() {
-		let bytes = data.public_key.as_slice().try_into()?;
-		let key = ed25519::VerifyingKey::from_bytes(&bytes)?;
-		return Ok(ed25519::fingerprint(&key)?);
-	} else {
-		let key = prime256v1::VerifyingKey::from_sec1_bytes(
-			&data.public_key,
-		)?;
-		return Ok(prime256v1::fingerprint(&key)?);
+	match to_public_key_type(data.public_key_type)? {
+		PublicKeyType::Ed25519 => {
+			let bytes = data.public_key.as_slice().try_into()?;
+			let key = ed25519::VerifyingKey::from_bytes(&bytes)?;
+			return Ok(ed25519::fingerprint(&key)?);
+		}
+		PublicKeyType::Prime256v1 => {
+			let key = prime256v1::VerifyingKey::from_sec1_bytes(
+				&data.public_key,
+			)?;
+			return Ok(prime256v1::fingerprint(&key)?);
+		}
 	}
 }
 
 pub fn verify(data: &CryptographicId) -> Result<(), DynError> {
-	let is_ed25519 = data.public_key_type == PublicKeyType::Ed25519 as i32;
 	let to_sign_arr = to_sign_arr(&data);
 	let sign_data = conv::flatten_binary_vec(&to_sign_arr);
-	let verifier = if is_ed25519 {
-		ed25519::verify
-	} else {
-		prime256v1::verify
+	let verifier = match to_public_key_type(data.public_key_type)? {
+		PublicKeyType::Ed25519 => ed25519::verify,
+		PublicKeyType::Prime256v1 => prime256v1::verify,
 	};
 	verifier(&data.public_key, &sign_data, &data.signature)?;
 
@@ -266,6 +275,25 @@ mod tests {
 	fn from_base64() {
 		let msg = super::from_base64(example_id_base64()).unwrap();
 		assert_eq!(msg, example_id());
+	}
+
+	#[test]
+	fn to_public_key_type() -> Result<(), DynError> {
+		assert_eq!(
+			super::to_public_key_type(0)?,
+			PublicKeyType::Ed25519
+		);
+		assert_eq!(
+			super::to_public_key_type(1)?,
+			PublicKeyType::Prime256v1
+		);
+		for i in 2..257 {
+			assert_eq!(
+				format!("{:?}", super::to_public_key_type(i)),
+				"Err(\"Unknown public key type\")"
+			);
+		}
+		return Ok(());
 	}
 
 	#[test]
