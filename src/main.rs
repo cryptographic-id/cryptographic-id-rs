@@ -115,7 +115,13 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 						return 2;
 					}
 				};
-			let timestamp = time::now();
+			let timestamp = match time::now() {
+				Ok(s) => s,
+				Err(e) => {
+					println!("Failed to get time: {}", e);
+					return 6;
+				}
+			};
 			let mut msg = message::CryptographicId {
 				public_key: vec![],
 				timestamp: timestamp,

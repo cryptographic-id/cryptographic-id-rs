@@ -134,20 +134,22 @@ pub fn verify(data: &CryptographicId) -> Result<(), DynError> {
 pub fn verify_current_with_msg(
 	data: &CryptographicId,
 	msg: &String,
-) -> Result<(), String> {
+) -> Result<(), DynError> {
 	if data.msg != msg.as_bytes().to_vec() {
-		return Err(format!("Wrong message, please share {}", msg));
+		return Err(
+			format!("Wrong message, please share {}", msg).into()
+		);
 	}
-	let now = time::now();
-	if data.timestamp > now + 5 {
-		return Err(format!("Signature in the future"));
+	let now = time::now()?;
+	if data.timestamp > now + 5 * time::SEC_TO_MILLIS {
+		return Err(format!("Signature in the future").into());
 	}
-	if data.timestamp < now - time::ONE_MINUTE_IN_SEC {
-		return Err(format!("Signature older than 1m"));
+	if data.timestamp < now - time::ONE_MINUTE_IN_MILLIS {
+		return Err(format!("Signature older than 1m").into());
 	}
 	return match verify(&data) {
 		Ok(()) => Ok(()),
-		Err(e) => Err(format!("Wrong signature: {}", e)),
+		Err(e) => Err(format!("Wrong signature: {}", e).into()),
 	};
 }
 
@@ -441,49 +443,52 @@ mod tests {
 		))
 		.unwrap();
 		let mut msg = example_id();
-		let now = super::time::now();
+		let now = super::time::now()?;
 		let correct_msg = "myMessage".to_string();
 		msg.public_key = key.public_key().unwrap();
 		// still in the range
-		msg.timestamp = now + 3;
+		msg.timestamp = now + 3 * super::time::SEC_TO_MILLIS;
 		message::sign(&mut msg, &mut key)?;
 		super::verify_current_with_msg(&msg, &correct_msg).unwrap();
 
 		// oldest possible
-		msg.timestamp = now - super::time::ONE_MINUTE_IN_SEC + 2;
+		msg.timestamp = now - super::time::ONE_MINUTE_IN_MILLIS
+			+ 2 * super::time::SEC_TO_MILLIS;
 		message::sign(&mut msg, &mut key)?;
 		super::verify_current_with_msg(&msg, &correct_msg).unwrap();
 
 		// wrong msg
-		assert_eq!(
+		assert!(matches!(
 			super::verify_current_with_msg(
 				&msg,
 				&"1234".to_string()
 			),
-			Err("Wrong message, please share 1234".to_string())
-		);
+			Err(e) if format!("{}", e) ==
+				"Wrong message, please share 1234"
+		));
 		// in the future
-		msg.timestamp = now + 7;
+		msg.timestamp = now + 7 * super::time::SEC_TO_MILLIS;
 		message::sign(&mut msg, &mut key)?;
-		assert_eq!(
+		assert!(matches!(
 			super::verify_current_with_msg(&msg, &&correct_msg),
-			Err("Signature in the future".to_string())
-		);
+			Err(e) if format!("{}", e) == "Signature in the future"
+		));
 		// in the past
-		msg.timestamp = now - super::time::ONE_MINUTE_IN_SEC - 1;
+		msg.timestamp = now - super::time::ONE_MINUTE_IN_MILLIS - 1;
 		message::sign(&mut msg, &mut key)?;
-		assert_eq!(
+		assert!(matches!(
 			super::verify_current_with_msg(&msg, &&correct_msg),
-			Err("Signature older than 1m".to_string())
-		);
+			Err(e) if format!("{}", e) == "Signature older than 1m"
+		));
 		// wrong sig
-		msg.timestamp = now - 1;
+		msg.timestamp = now - 1 * super::time::SEC_TO_MILLIS;
 		message::sign(&mut msg, &mut key)?;
-		msg.timestamp = now - 3;
+		msg.timestamp = now - 3 * super::time::SEC_TO_MILLIS;
 		let err = super::verify_current_with_msg(&msg, &&correct_msg);
 		assert!(err.is_err());
 		match err {
-			Err(e) => assert!(e.starts_with("Wrong signature: ")),
+			Err(e) => assert!(format!("{}", e)
+				.starts_with("Wrong signature: ")),
 			_ => (),
 		}
 		return Ok(());
