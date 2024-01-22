@@ -7,7 +7,7 @@ After=tmp.mount
 Wants=systemd-vconsole-setup.service
 Wants=tmp.mount
 # Dracut
-After=dracut-initqueue.service
+Before=dracut-initqueue.service
 Before=dracut-pre-mount.service
 # Initcpio
 Before=initrd-switch-root.service

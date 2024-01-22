@@ -35,12 +35,13 @@ install() {
 		derror "ERR: There are world readable files in ${DIR}\\n"
 		exit 1
 	fi
-	inst "${DIR}"/*/*
+	inst_multiple "${DIR}"/*/*
 
 	font="$(tr -d ' \t\n' < "${DIR}/font")"
 	printf "%s" "${font}" > "${initdir}/${DIR}/font"
 	if [ "${font}" != "" ]; then
-		inst "/usr/share/kbd/consolefonts/${font}"*
+		inst_multiple "/usr/share/kbd/consolefonts/${font}"*
+		inst_binary gzip
 		inst_binary setfont
 	fi
 	if [ -n "$(ls -A "${DIR}/age")" ]; then
@@ -52,7 +53,7 @@ install() {
 		inst_libdir_file 'libtss2-tcti-device.so*'
 	fi
 	if [ -n "$(ls -A "${DIR}/tpm2")" ]; then
-		inst "${DIR}"/tpm2/*/*
+		inst_multiple "${DIR}"/tpm2/*/*
 		inst_libdir_file 'libtss2-tcti-device.so*'
 	fi
 	# shellcheck disable=SC2154
