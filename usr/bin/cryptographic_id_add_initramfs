@@ -10,9 +10,7 @@ Create identity in the initramfs directory. (Rebuild it to include new keys.)
 Add a unencrypted identity:
 	${0} insecure NAME
 Add a age-encrypted identity
-	${0} age NAME
-Add a luks encrypted identity (tpm2-pin supported, huge file)
-	${0} cryptsetup NAME
+	${0} insecure-age NAME
 Add an identity stored in a tpm2
 	${0} tpm2 NAME [--handle-only]
 		--handle-only: dont store sensitive portion of the tpm2-object
@@ -45,34 +43,11 @@ insecure)
 	cryptographic_id show "${key}"
 	chmod 400 "${key}"
 ;;
-age)
+insecure-age)
 	key="${DIR}/age/${2}"
 	printf "Create key: %s\\n" "${key}"
 	create_tmpkey
 	age -p -o "${key}" "${TMPKEY}"
-	chmod 400 "${key}"
-;;
-cryptsetup)
-	key="${DIR}/cryptsetup/${2}"
-	printf "Create key: %s\\n" "${key}"
-	truncate -s 20M "${key}"
-	cryptsetup luksFormat -c aes-xts-plain64 -s 512 -h sha512 "${key}" || exit 1
-	printf "Use TPM2+Pin (y/n)? "
-	read -r use_tpm
-	if [ "${use_tpm}" = "y" ]; then
-		printf "PCRS to use (e.g. 0+7): "
-		read -r use_pcrs
-		systemd-cryptenroll \
-			--tpm2-device=auto \
-			--tpm2-with-pin=yes \
-			--tpm2-pcrs="${use_pcrs}" \
-			"${key}"
-	fi
-	/usr/lib/systemd/systemd-cryptsetup attach cryptographic_id_tmp \
-		"${key}" - tpm2-device=auto
-	create_tmpkey
-	dd if="${TMPKEY}" of=/dev/mapper/cryptographic_id_tmp
-	/usr/lib/systemd/systemd-cryptsetup detach cryptographic_id_tmp
 	chmod 400 "${key}"
 ;;
 tpm2)
