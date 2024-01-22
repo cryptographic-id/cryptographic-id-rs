@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "cryptographic-id-rs"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "asn1-rs",
  "base64",
