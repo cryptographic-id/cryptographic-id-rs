@@ -1,6 +1,7 @@
 #!/usr/bin/sh
 TMPDIR="/tmp/cryptographic_id"
 QRCODE="${TMPDIR}/qrcode"
+MSG="${TMPDIR}/message"
 KEY="$(systemd-escape --unescape "${1}")"
 run_binary() {
 	/usr/lib/cryptographic_id/cryptographic-id-rs "${@}"
