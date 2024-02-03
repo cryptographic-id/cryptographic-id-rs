@@ -5,9 +5,9 @@ use crate::prime256v1;
 use crate::sign::SigningConfig;
 use crate::time;
 
-use std::fmt;
 use base64::Engine;
 use prost::Message;
+use std::fmt;
 
 include!(concat!(env!("OUT_DIR"), "/cryptographic_id.rs"));
 use cryptographic_id::PublicKeyType;
@@ -41,10 +41,10 @@ impl fmt::Display for DecodeError {
 		match self {
 			Self::ProtobufError(i) => {
 				return i.fmt(f);
-			},
+			}
 			Self::Base64Error(i) => {
 				return i.fmt(f);
-			},
+			}
 		};
 	}
 }

@@ -20,7 +20,7 @@ use crate::error::DynError;
 use crate::fs;
 use crate::tpm2;
 
-fn signature_to_asn1(sig: &EccSignature) -> Result<Vec<u8>, DynError> {
+pub fn signature_to_asn1(sig: &EccSignature) -> Result<Vec<u8>, DynError> {
 	let mut v = Vec::new();
 	let r_arr: [u8; 32] = sig.signature_r().as_bytes().try_into()?;
 	let s_arr: [u8; 32] = sig.signature_s().as_bytes().try_into()?;

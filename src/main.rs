@@ -30,6 +30,8 @@ enum Action {
 	ShowPublicKey(PathBuf),
 	SignWithKey(PathBuf, String),
 	TPM2ScanAndMeasure,
+	Attest(String),
+	ShowAttest,
 }
 
 fn print_help() {
@@ -64,6 +66,9 @@ fn parse_args(args: &Vec<String>) -> Result<Action, ()> {
 		if action == "scan_and_measure" {
 			return Ok(Action::TPM2ScanAndMeasure);
 		}
+		if action == "show-attest" {
+			return Ok(Action::ShowAttest);
+		}
 		return Err(());
 	}
 	let key_path = fs::to_path_buf(&args[2]);
@@ -72,6 +77,8 @@ fn parse_args(args: &Vec<String>) -> Result<Action, ()> {
 			return Ok(Action::CreateKey(key_path));
 		} else if action == "show" {
 			return Ok(Action::ShowPublicKey(key_path));
+		} else if action == "attest" {
+			return Ok(Action::Attest(args[2].clone()));
 		}
 	}
 	if args.len() == 4 {
@@ -229,7 +236,22 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 				&RECEIVED_SIGNAL,
 			);
 		}
+		Action::Attest(nonce) => match tpm2::attestation(nonce) {
+			Ok(()) => {}
+			Err(e) => {
+				println!("Failed to attest: {:?}", e);
+				return 1;
+			}
+		},
+		Action::ShowAttest => match tpm2::show_attest() {
+			Ok(()) => {}
+			Err(e) => {
+				println!("Failed to show attest: {:?}", e);
+				return 1;
+			}
+		},
 	};
+	return 0;
 }
 
 fn main() {
