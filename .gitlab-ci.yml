@@ -1,11 +1,13 @@
 test:
-  image: rust:latest
+  # TODO: change to ubuntu:latest, when tss2-sys >= 3.2.2
+  image: ubuntu:rolling
   script:
     - apt-get update
-    - apt-get --yes install protobuf-compiler shellcheck dbus-daemon
+    - apt-get --yes install
+      clang cargo pkgconf protobuf-compiler git
+      shellcheck dbus-daemon
       swtpm swtpm-tools tpm2-abrmd tpm2-tools
       libtss2-dev libtss2-tcti-tabrmd0 libtss2-tcti-swtpm0
-      clang
     - git submodule update --init --recursive
     - shellcheck usr/lib/cryptographic_id/* usr/bin/*
       usr/lib/initcpio/install/cryptographic-id

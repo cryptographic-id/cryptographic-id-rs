@@ -4,7 +4,7 @@ pub use tss_esapi::Error;
 use tss_esapi::{
 	handles::KeyHandle,
 	interface_types::{
-		algorithm::HashingAlgorithm, resource_handles::Hierarchy,
+		algorithm::HashingAlgorithm, reserved_handles::Hierarchy,
 		session_handles::AuthSession,
 	},
 	structures::{
