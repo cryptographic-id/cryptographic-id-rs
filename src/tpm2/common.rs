@@ -9,7 +9,7 @@ use tss_esapi::{
 		algorithm::{HashingAlgorithm, PublicAlgorithm, SymmetricMode},
 		ecc::EccCurve,
 		key_bits::AesKeyBits,
-		resource_handles::Hierarchy,
+		reserved_handles::Hierarchy,
 		session_handles::AuthSession,
 	},
 	structures::{
@@ -239,7 +239,7 @@ pub mod tests {
 	use tss_esapi::{
 		constants::{SessionType, StructureTag::Creation},
 		interface_types::{
-			resource_handles::Hierarchy,
+			reserved_handles::Hierarchy,
 			session_handles::PolicySession,
 		},
 		structures::{Digest, PcrSlot, Ticket},

@@ -15,7 +15,7 @@ qrcode = { version = "0.12", default-features = false }
 qrcode_scanner = "0.3"
 rand = "0.8"
 sha2 = "0.10"
-tss-esapi = { git = "https://github.com/parallaxsecond/rust-tss-esapi.git", rev = "21d426354a8f3cf40f3727388f9c74cd8828e0cd" }
+tss-esapi = { git = "https://github.com/parallaxsecond/rust-tss-esapi.git", rev = "f327371657b572597d173f909e1a81595366e535", features = ["generate-bindings"] }
 
 [build-dependencies]
 prost-build = "0.12"
