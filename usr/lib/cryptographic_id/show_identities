@@ -4,6 +4,8 @@ TMPDIR="/tmp/cryptographic_id"
 TMPKEY="${TMPDIR}/key"
 TMPFONT="/tmp/cryptographic_id.font"
 FONT="$(cat "${DIR}/font")"
+TTY_SETTINGS="$(stty -g)" || exit 1
+INPUT_PASSWORD=""
 
 set_custom_font() {
 	if [ "${FONT}" != "" ]; then
@@ -28,21 +30,8 @@ age_decrypt_identity() {
 	done
 }
 
-cryptsetup_identity() {
-	[ ! -f "${1}" ] && return 1
-	printf "Key: %s:\\n" "${1}"
-	/usr/lib/systemd/systemd-cryptsetup attach cryptographic_id_tmp "${1}" - tpm2-device=auto
-	dd if=/dev/mapper/cryptographic_id_tmp of="${TMPKEY}" count=1 bs=64 status=none
-	/usr/lib/systemd/systemd-cryptsetup detach cryptographic_id_tmp
-}
-
-sign_helper_tmpkey() {
-	sign_helper "${TMPKEY}"
-}
-
-sign_helper() {
-	param="$(systemd-escape "${1}")"
-	systemctl start "cryptographic_id_helper@${param}.service"
+run_binary() {
+	/usr/lib/cryptographic_id/cryptographic-id-rs "${@}"
 }
 
 tpm2_identity() {
@@ -50,10 +39,18 @@ tpm2_identity() {
 	cp "${1}/public_key.raw" "${TMPKEY}"
 }
 
+read_password() {
+	printf "Enter password (blank to use previous): "
+	stty -echo || exit 1
+	read -r INPUT_PASSWORD
+	stty echo || exit 1
+	printf "\\n"
+}
+
 show_identities() {
 	res=""
+	last_password=""
 	get_key="${2}"
-	sign="${3}"
 	for file in "${DIR}/${1}/"*; do
 		"${get_key}" "${file}" || continue
 		if [ ! -f "${TMPKEY}" ]; then
@@ -66,16 +63,23 @@ show_identities() {
 			printf "\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n"
 			printf "\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n"
 			printf "Key: %s:\\n" "${file}"
+			use_password=""
+			if [ -f "${file}/password" ]; then
+				read_password
+				if [ "${INPUT_PASSWORD}" = "" ]; then
+					use_password="${last_password}"
+				else
+					use_password="${INPUT_PASSWORD}"
+					last_password="${INPUT_PASSWORD}"
+				fi
+			fi
 			printf "\\nEnter message to sign: "
 			read -r msg
-			printf "%s" "${msg}" > "${TMPDIR}/message"
 			date '+%Y-%m-%d %H:%M:%S'
-			"${sign}" "${file}"
+			PASSWORD="${use_password}" run_binary sign "${file}" "${msg}"
 			# set custom font each iteration, to prevent problems
 			# when udev set it to something different
 			set_custom_font
-			cat "${TMPDIR}/qrcode"
-			rm -f "${TMPDIR}/qrcode"
 			printf "\\nContinue (y) or create new qr-code (q)? "
 			read -r res
 			printf "\\n"
@@ -89,14 +93,15 @@ cleanup() {
 		setfont "${TMPFONT}"
 	fi
 	rm -f "${TMPDIR}"/*
+	stty "${TTY_SETTINGS}"
 }
 
 main() {
 	trap cleanup EXIT
-	show_identities "insecure" cat_identity sign_helper
-	show_identities "tpm2" tpm2_identity sign_helper
-	show_identities "cryptsetup" cryptsetup_identity sign_helper_tmpkey
-	show_identities "age" age_decrypt_identity sign_helper_tmpkey
+	mkdir -m 0700 "${TMPDIR}"
+	show_identities "insecure" cat_identity
+	show_identities "tpm2" tpm2_identity
+	show_identities "age" age_decrypt_identity
 }
 
 main

@@ -13,7 +13,10 @@ pub enum SigningConfig {
 }
 
 impl SigningConfig {
-	pub fn load(pathbuf: &PathBuf) -> Result<Self, DynError> {
+	pub fn load(
+		pathbuf: &PathBuf,
+		password: &str,
+	) -> Result<Self, DynError> {
 		let path = pathbuf.as_path();
 		if path.is_file() {
 			return match ed25519::load_keypair_from_file(&pathbuf) {
@@ -22,7 +25,7 @@ impl SigningConfig {
 			};
 		} else if path.is_dir() {
 			return Ok(SigningConfig::Tpm2(
-				Tpm2SigningConfig::load(&pathbuf)?,
+				Tpm2SigningConfig::load(&pathbuf, &password)?,
 			));
 		} else {
 			return Err(Box::new(io::Error::new(
@@ -87,7 +90,7 @@ mod test {
 			241, 179, 72, 7, 207, 179, 22, 70, 170, 238, 58, 81,
 			102, 16, 237, 122, 128,
 		];
-		let mut sign_config = super::SigningConfig::load(&dir)?;
+		let mut sign_config = super::SigningConfig::load(&dir, "")?;
 		assert_eq!(sign_config.public_key()?, pubkey);
 		assert_eq!(
 			sign_config.fingerprint()?,
@@ -114,7 +117,7 @@ mod test {
 			127, 150, 26, 109, 4, 4, 7, 127, 72, 77, 143, 129, 183,
 			228, 156, 146, 81, 210, 25, 249,
 		];
-		let mut sign_config = super::SigningConfig::load(&file)?;
+		let mut sign_config = super::SigningConfig::load(&file, "")?;
 		assert_eq!(sign_config.public_key()?, pubkey);
 		assert_eq!(
 			sign_config.fingerprint()?,

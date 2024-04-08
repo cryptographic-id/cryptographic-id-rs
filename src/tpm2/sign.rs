@@ -62,18 +62,37 @@ fn read_pcr_file(dir: &PathBuf) -> Result<Vec<PcrSlot>, DynError> {
 	return Ok(result);
 }
 
+fn read_version_file(dir: &PathBuf) -> Result<tpm2::KeyVersion, DynError> {
+	let binary = match fs::read_file(&tpm2::to_version_file(&dir)) {
+		Ok(s) => s,
+		Err(_) => {
+			return Ok(tpm2::KeyVersion::V1);
+		}
+	};
+	let content = std::str::from_utf8(&binary)?;
+	let cleared = content.replace(" ", "").replace("\n", "");
+	return match cleared.as_str() {
+		"1" => Ok(tpm2::KeyVersion::V1),
+		"2" => Ok(tpm2::KeyVersion::V2),
+		_ => Err("Unknown key version".into()),
+	};
+}
+
 pub struct Tpm2SigningConfig {
 	context: Context,
 	key_handle: KeyHandle,
 	public: Public,
 	session: AuthSession,
+	version: tpm2::KeyVersion,
 	pcrs: Vec<PcrSlot>,
 }
 
 fn _load_public_and_handle(
 	context: &mut Context,
+	session: AuthSession,
 	primary: &CreatePrimaryKeyResult,
 	pathbuf: &PathBuf,
+	version: &tpm2::KeyVersion,
 ) -> Result<(Public, KeyHandle), DynError> {
 	let handle_file = tpm2::to_handle_file(&pathbuf);
 	if handle_file.exists() {
@@ -85,45 +104,64 @@ fn _load_public_and_handle(
 	} else {
 		let public = read_public_file(&pathbuf)?;
 		let private = read_private_file(&pathbuf)?;
-		let key_handle =
-			context.execute_with_nullauth_session(|ctx| {
-				ctx.load(
-					primary.key_handle,
-					private,
-					public.clone(),
-				)
-			})?;
+		let handler = |ctx: &mut Context| {
+			ctx.load(primary.key_handle, private, public.clone())
+		};
+		let key_handle = if *version == tpm2::KeyVersion::V1 {
+			context.execute_with_nullauth_session(handler)?
+		} else {
+			context.execute_with_session(Some(session), handler)?
+		};
 		return Ok((public, key_handle));
 	}
 }
 
 impl Tpm2SigningConfig {
-	pub fn load(pathbuf: &PathBuf) -> Result<Self, DynError> {
+	pub fn load(
+		pathbuf: &PathBuf,
+		password: &str,
+	) -> Result<Self, DynError> {
 		let mut context = tpm2::create_context()?;
 		let pcrs = read_pcr_file(&pathbuf)?;
-		let session_digest = if pcrs.len() == 0 {
-			Digest::try_from(vec![])?
-		} else {
-			let session = tpm2::start_auth_session(&mut context)?;
-			tpm2::set_policy(&mut context, &pcrs, session)?;
-			context.policy_get_digest(session.try_into()?)?
-		};
+		let version = read_version_file(&pathbuf)?;
+		let session = tpm2::start_auth_session(&mut context)?;
+		let session_digest =
+			if version == tpm2::KeyVersion::V1 && pcrs.len() == 0 {
+				Digest::try_from(vec![])?
+			} else {
+				tpm2::set_policy(
+					&mut context,
+					&pcrs,
+					session,
+					&version,
+				)?;
+				context.policy_get_digest(session.try_into()?)?
+			};
 		let primary = tpm2::create_primary(
 			&mut context,
 			session_digest.clone(),
+			&version,
 		)?;
 		let (public, key_handle) = _load_public_and_handle(
 			&mut context,
+			session,
 			&primary,
 			&pathbuf,
+			&version,
 		)?;
-		let save_session = if pcrs.len() == 0 {
+		let save_session = if pcrs.len() == 0
+			&& version == tpm2::KeyVersion::V1
+		{
 			context.tr_set_auth(
 				key_handle.into(),
 				Auth::try_from(b"x".to_vec())?,
 			)?;
 			AuthSession::Password
 		} else {
+			context.tr_set_auth(
+				key_handle.into(),
+				Auth::try_from(password.as_bytes().to_vec())?,
+			)?;
 			tpm2::start_auth_session(&mut context)?
 		};
 		return Ok(Self {
@@ -131,6 +169,7 @@ impl Tpm2SigningConfig {
 			key_handle: key_handle,
 			public: public,
 			session: save_session,
+			version: version,
 			pcrs: pcrs,
 		});
 	}
@@ -147,7 +186,7 @@ impl Tpm2SigningConfig {
 		self: &mut Self,
 		message: &[u8],
 	) -> Result<Vec<u8>, DynError> {
-		if self.pcrs.len() > 0 {
+		if self.pcrs.len() > 0 || self.version != tpm2::KeyVersion::V1 {
 			// otherwise TPM2 fails to sign on multiple runs
 			self.context
 				.policy_restart(self.session.try_into()?)?;
@@ -155,6 +194,7 @@ impl Tpm2SigningConfig {
 				&mut self.context,
 				&self.pcrs,
 				self.session.try_into()?,
+				&self.version,
 			)?;
 		}
 		let data = MaxBuffer::try_from(message.to_vec())?;
@@ -194,6 +234,7 @@ impl Tpm2SigningConfig {
 mod test {
 	use super::PcrSlot;
 	use crate::prime256v1;
+	use crate::tpm2;
 	use crate::tpm2::sign::DynError;
 	use std::path::PathBuf;
 	use tss_esapi::{
@@ -306,8 +347,41 @@ mod test {
 		return Ok(());
 	}
 
-	fn test_sign(dir: &PathBuf, pubkey: &Vec<u8>) -> Result<(), DynError> {
-		let mut sign_config = super::Tpm2SigningConfig::load(&dir)?;
+	#[test]
+	fn read_version_file() -> Result<(), DynError> {
+		assert_eq!(
+			super::read_version_file(&super::fs::to_path_buf(
+				"/my/dir/no/pcrs"
+			))?,
+			tpm2::KeyVersion::V1
+		);
+		assert_eq!(
+			super::read_version_file(&super::fs::to_path_buf(
+				"tests/files/tpm2/sign/read_version_file/v1"
+			))?,
+			tpm2::KeyVersion::V1
+		);
+		assert_eq!(
+			super::read_version_file(&super::fs::to_path_buf(
+				"tests/files/tpm2/sign/read_version_file/v2"
+			))?,
+			tpm2::KeyVersion::V2
+		);
+		let error = super::read_version_file(&super::fs::to_path_buf(
+			"tests/files/tpm2/sign/read_version_file/error",
+		))
+		.unwrap_err();
+		assert_eq!(format!("{}", error), "Unknown key version");
+		return Ok(());
+	}
+
+	fn test_sign(
+		dir: &PathBuf,
+		pubkey: &Vec<u8>,
+		password: &str,
+	) -> Result<(), DynError> {
+		let mut sign_config =
+			super::Tpm2SigningConfig::load(&dir, password)?;
 		assert_eq!(sign_config.public_key()?, *pubkey);
 		// Test signing works multiple times
 		for _ in 0..5 {
@@ -331,7 +405,7 @@ mod test {
 			246, 216, 86, 167, 174, 203, 236, 181, 164, 230, 193,
 			84, 41, 136, 163, 203, 53, 122,
 		];
-		return test_sign(&dir, &pubkey);
+		return test_sign(&dir, &pubkey, "");
 	}
 
 	#[test]
@@ -347,7 +421,7 @@ mod test {
 			241, 179, 72, 7, 207, 179, 22, 70, 170, 238, 58, 81,
 			102, 16, 237, 122, 128,
 		];
-		return test_sign(&dir, &pubkey);
+		return test_sign(&dir, &pubkey, "");
 	}
 
 	#[test]
@@ -363,7 +437,7 @@ mod test {
 			103, 62, 66, 142, 149, 148, 25, 210, 24, 248, 146, 173,
 			134, 155, 145, 211, 20, 133,
 		];
-		return test_sign(&dir, &pubkey);
+		return test_sign(&dir, &pubkey, "");
 	}
 
 	#[test]
@@ -379,7 +453,102 @@ mod test {
 			255, 115, 168, 3, 16, 183, 155, 138, 39, 5, 81, 30,
 			108, 236, 24, 174, 204,
 		];
-		return test_sign(&dir, &pubkey);
+		return test_sign(&dir, &pubkey, "");
+	}
+
+	#[test]
+	fn tpm2_signing_config_v2() -> Result<(), DynError> {
+		let dir =
+			super::fs::to_path_buf("tests/files/tpm2/sign/sign/v2");
+		let pubkey = vec![
+			4, 210, 82, 52, 113, 204, 118, 33, 214, 211, 98, 166,
+			134, 3, 45, 42, 93, 170, 210, 215, 233, 2, 241, 119,
+			54, 58, 69, 204, 59, 44, 107, 75, 57, 19, 134, 135,
+			182, 161, 49, 126, 208, 85, 112, 121, 141, 10, 212,
+			101, 243, 135, 105, 116, 39, 76, 240, 196, 179, 218,
+			25, 18, 192, 251, 141, 242, 243,
+		];
+		return test_sign(&dir, &pubkey, "");
+	}
+
+	#[test]
+	fn tpm2_signing_config_v2_pw() -> Result<(), DynError> {
+		let dir = super::fs::to_path_buf(
+			"tests/files/tpm2/sign/sign/v2_pw",
+		);
+		let pubkey = vec![
+			4, 24, 6, 213, 33, 15, 213, 1, 95, 10, 107, 31, 223,
+			78, 101, 81, 26, 51, 194, 26, 7, 180, 250, 33, 160, 61,
+			135, 204, 70, 171, 9, 146, 164, 134, 146, 251, 85, 186,
+			107, 139, 74, 239, 77, 75, 228, 162, 45, 243, 52, 129,
+			11, 22, 229, 115, 139, 111, 150, 54, 102, 198, 51, 11,
+			2, 85, 58,
+		];
+		return test_sign(&dir, &pubkey, "onlypw");
+	}
+
+	#[test]
+	fn tpm2_signing_config_v2_pcr() -> Result<(), DynError> {
+		let dir = super::fs::to_path_buf(
+			"tests/files/tpm2/sign/sign/v2_pcr_4",
+		);
+		let pubkey = vec![
+			4, 126, 232, 89, 173, 155, 149, 55, 234, 70, 199, 221,
+			175, 149, 152, 248, 30, 84, 11, 246, 6, 62, 28, 21,
+			204, 136, 193, 193, 13, 222, 17, 164, 103, 20, 32, 133,
+			115, 255, 29, 134, 110, 104, 246, 102, 173, 99, 68, 96,
+			246, 196, 165, 124, 206, 42, 213, 187, 30, 195, 50,
+			171, 5, 141, 60, 46, 1,
+		];
+		return test_sign(&dir, &pubkey, "");
+	}
+
+	#[test]
+	fn tpm2_signing_config_v2_pw_pcr() -> Result<(), DynError> {
+		let dir = super::fs::to_path_buf(
+			"tests/files/tpm2/sign/sign/v2_pw_pcr_4_6_7",
+		);
+		let pubkey = vec![
+			4, 63, 164, 81, 46, 80, 23, 197, 41, 233, 34, 141, 192,
+			12, 203, 199, 15, 238, 83, 123, 56, 174, 76, 162, 204,
+			173, 51, 220, 65, 109, 62, 69, 244, 35, 202, 41, 184,
+			36, 244, 247, 248, 39, 47, 164, 230, 30, 230, 168, 152,
+			177, 252, 7, 250, 234, 43, 244, 42, 44, 134, 88, 77,
+			172, 212, 232, 50,
+		];
+		return test_sign(&dir, &pubkey, "mypw");
+	}
+
+	#[test]
+	fn tpm2_signing_config_v2_handle() -> Result<(), DynError> {
+		let dir = super::fs::to_path_buf(
+			"tests/files/tpm2/sign/sign/v2_handle",
+		);
+		let pubkey = vec![
+			4, 174, 54, 90, 232, 38, 217, 111, 141, 88, 19, 35,
+			164, 223, 31, 171, 252, 83, 158, 121, 157, 204, 246,
+			22, 86, 180, 94, 65, 1, 97, 122, 100, 14, 33, 249, 235,
+			32, 6, 204, 176, 14, 180, 246, 39, 119, 114, 26, 6, 61,
+			106, 195, 99, 14, 225, 47, 89, 248, 70, 164, 54, 254,
+			132, 80, 224, 111,
+		];
+		return test_sign(&dir, &pubkey, "");
+	}
+
+	#[test]
+	fn tpm2_signing_config_v2_handle_pw_pcr() -> Result<(), DynError> {
+		let dir = super::fs::to_path_buf(
+			"tests/files/tpm2/sign/sign/v2_handle_pw_pcr",
+		);
+		let pubkey = vec![
+			4, 231, 211, 210, 34, 194, 55, 1, 79, 194, 129, 189,
+			171, 188, 74, 43, 68, 153, 58, 163, 47, 110, 14, 248,
+			6, 214, 64, 162, 79, 103, 6, 94, 176, 4, 132, 83, 115,
+			122, 14, 102, 19, 247, 120, 27, 59, 126, 149, 159, 219,
+			157, 249, 237, 111, 128, 163, 80, 251, 71, 130, 120,
+			28, 188, 209, 129, 175,
+		];
+		return test_sign(&dir, &pubkey, "handlepw");
 	}
 
 	#[test]
@@ -387,7 +556,7 @@ mod test {
 		let dir = super::fs::to_path_buf(
 			"tests/files/tpm2/sign/sign/handle_pcr_5_6_7",
 		);
-		let sign_config = super::Tpm2SigningConfig::load(&dir)?;
+		let sign_config = super::Tpm2SigningConfig::load(&dir, "")?;
 		assert_eq!(
 			sign_config.fingerprint()?,
 			vec![

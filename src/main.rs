@@ -42,6 +42,8 @@ fn print_help() {
 		Methods:\n\
 		\tcreate          Create a private key\n\
 		\tsign            Sign own id with message\n\
+		\t                Environment variables:\n\
+		\t                PASSWORD: key password for v2\n\
 		\tshow            Show public key in hex format\n\
 		\tscan_and_measure\n\
 		\t                Scans a QR-code and measures it into a PCR\n\
@@ -109,8 +111,10 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 			};
 		}
 		Action::ShowPublicKey(path) => {
-			let sign_config = match sign::SigningConfig::load(&path)
-			{
+			let password = String::from("");
+			let sign_config = match sign::SigningConfig::load(
+				&path, &password,
+			) {
 				Ok(k) => k,
 				Err(e) => {
 					println!("Error loading key: {}", e);
@@ -128,17 +132,19 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 			return 0;
 		}
 		Action::SignWithKey(path, msg) => {
-			let mut sign_config =
-				match sign::SigningConfig::load(&path) {
-					Ok(k) => k,
-					Err(e) => {
-						println!(
-							"Error loading key: {}",
-							e
-						);
-						return 2;
-					}
-				};
+			let password = match env::var("PASSWORD") {
+				Ok(s) => s,
+				Err(_) => String::from(""),
+			};
+			let mut sign_config = match sign::SigningConfig::load(
+				&path, &password,
+			) {
+				Ok(k) => k,
+				Err(e) => {
+					println!("Error loading key: {}", e);
+					return 2;
+				}
+			};
 			let timestamp = match time::now() {
 				Ok(s) => s,
 				Err(e) => {
