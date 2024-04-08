@@ -210,9 +210,10 @@ mod tests {
 	}
 
 	fn signed_example_id_ed25519() -> message::CryptographicId {
-		let mut key = super::SigningConfig::load(&fs::to_path_buf(
-			TESTKEY_PATH,
-		))
+		let mut key = super::SigningConfig::load(
+			&fs::to_path_buf(TESTKEY_PATH),
+			"",
+		)
 		.unwrap();
 		let mut msg = example_id();
 		msg.public_key = key.public_key().unwrap();
@@ -300,9 +301,12 @@ mod tests {
 
 	#[test]
 	fn sign_ed25519() {
-		let mut key = super::SigningConfig::load(&fs::to_path_buf(
-			"tests/files/message/sign/key_ed25519",
-		))
+		let mut key = super::SigningConfig::load(
+			&fs::to_path_buf(
+				"tests/files/message/sign/key_ed25519",
+			),
+			"",
+		)
 		.unwrap();
 		let mut msg = example_id();
 		message::sign(&mut msg, &mut key).unwrap();
@@ -315,9 +319,10 @@ mod tests {
 
 	#[test]
 	fn sign_tpm2() -> Result<(), DynError> {
-		let mut key = super::SigningConfig::load(&fs::to_path_buf(
-			"tests/files/message/sign/tpm2",
-		))?;
+		let mut key = super::SigningConfig::load(
+			&fs::to_path_buf("tests/files/message/sign/tpm2"),
+			"",
+		)?;
 		let mut msg = example_id();
 		message::sign(&mut msg, &mut key)?;
 		message::verify(&msg)?;
@@ -438,9 +443,10 @@ mod tests {
 
 	#[test]
 	fn verify_current_with_msg() -> Result<(), DynError> {
-		let mut key = super::SigningConfig::load(&fs::to_path_buf(
-			TESTKEY_PATH,
-		))
+		let mut key = super::SigningConfig::load(
+			&fs::to_path_buf(TESTKEY_PATH),
+			"",
+		)
 		.unwrap();
 		let mut msg = example_id();
 		let now = super::time::now()?;

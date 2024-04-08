@@ -23,6 +23,12 @@ use tss_esapi::{
 };
 pub use tss_esapi::{handles::PcrHandle, structures::PcrSlot, Context, Error};
 
+#[derive(Debug, PartialEq)]
+pub enum KeyVersion {
+	V1,
+	V2,
+}
+
 pub fn to_private_file(dir: &PathBuf) -> PathBuf {
 	let mut p = dir.clone();
 	p.push("ecc.priv");
@@ -38,6 +44,12 @@ pub fn to_public_file(dir: &PathBuf) -> PathBuf {
 pub fn to_pcr_file(dir: &PathBuf) -> PathBuf {
 	let mut p = dir.clone();
 	p.push("pcrs");
+	return p;
+}
+
+pub fn to_version_file(dir: &PathBuf) -> PathBuf {
+	let mut p = dir.clone();
+	p.push("version");
 	return p;
 }
 
@@ -79,7 +91,10 @@ pub fn start_auth_session(context: &mut Context) -> Result<AuthSession, Error> {
 	};
 }
 
-pub fn create_public_for_primary(policy: Digest) -> Result<Public, Error> {
+pub fn create_public_for_primary(
+	policy: Digest,
+	version: &KeyVersion,
+) -> Result<Public, Error> {
 	let ecc_params = PublicEccParametersBuilder::new()
 		.with_ecc_scheme(EccScheme::Null)
 		.with_curve(EccCurve::NistP256)
@@ -93,17 +108,17 @@ pub fn create_public_for_primary(policy: Digest) -> Result<Public, Error> {
 			KeyDerivationFunctionScheme::Null,
 		)
 		.build()?;
-	let primary_object_attributes = ObjectAttributesBuilder::new()
+	let mut primary_attr_builder = ObjectAttributesBuilder::new()
 		.with_fixed_tpm(true)
 		.with_fixed_parent(true)
 		.with_sensitive_data_origin(true)
-		// TODO remove with_user_with_auth in a v2
-		// the key is already protected by the policy, this will also
-		// protect the primary key with it.
-		.with_user_with_auth(true)
 		.with_restricted(true)
-		.with_decrypt(true)
-		.build()?;
+		.with_decrypt(true);
+	if *version == KeyVersion::V1 {
+		primary_attr_builder =
+			primary_attr_builder.with_user_with_auth(true);
+	}
+	let primary_object_attributes = primary_attr_builder.build()?;
 	let primary_public = PublicBuilder::new()
 		.with_public_algorithm(PublicAlgorithm::Ecc)
 		.with_name_hashing_algorithm(HashingAlgorithm::Sha256)
@@ -118,8 +133,9 @@ pub fn create_public_for_primary(policy: Digest) -> Result<Public, Error> {
 pub fn create_primary(
 	context: &mut Context,
 	policy: Digest,
+	version: &KeyVersion,
 ) -> Result<CreatePrimaryKeyResult, Error> {
-	let primary_public = create_public_for_primary(policy)?;
+	let primary_public = create_public_for_primary(policy, version)?;
 	return context.execute_with_nullauth_session(|ctx| {
 		ctx.create_primary(
 			Hierarchy::Endorsement,
@@ -136,7 +152,14 @@ pub fn set_policy(
 	context: &mut Context,
 	pcrs: &Vec<PcrSlot>,
 	session: AuthSession,
+	version: &KeyVersion,
 ) -> Result<(), DynError> {
+	if *version != KeyVersion::V1 {
+		context.policy_password(session.try_into()?)?;
+		if pcrs.len() == 0 {
+			return Ok(());
+		}
+	}
 	let pcr_selection_list = PcrSelectionListBuilder::new()
 		.with_selection(HashingAlgorithm::Sha256, pcrs.as_slice())
 		.build()?;
@@ -275,6 +298,15 @@ pub mod tests {
 	}
 
 	#[test]
+	fn to_version_file() {
+		let path = fs::to_path_buf("/my/dir/to");
+		assert_eq!(
+			super::to_version_file(&path),
+			fs::to_path_buf("/my/dir/to/version")
+		);
+	}
+
+	#[test]
 	fn to_handle_file() {
 		let path = fs::to_path_buf("/my/dir/to");
 		assert_eq!(
@@ -348,7 +380,10 @@ pub mod tests {
 			104, 74, 93, 8, 215, 146, 120, 21, 6, 17, 220, 126, 89,
 			9, 87, 123, 64, 19, 10, 139,
 		])?;
-		let public = super::create_public_for_primary(digest)?;
+		let public = super::create_public_for_primary(
+			digest.clone(),
+			&super::KeyVersion::V1,
+		)?;
 		assert_eq!(
 			public.marshall()?,
 			[
@@ -357,6 +392,20 @@ pub mod tests {
 				104, 74, 93, 8, 215, 146, 120, 21, 6, 17, 220,
 				126, 89, 9, 87, 123, 64, 19, 10, 139, 0, 6, 0,
 				128, 0, 67, 0, 16, 0, 3, 0, 16, 0, 0, 0, 0
+			]
+		);
+		let public = super::create_public_for_primary(
+			digest,
+			&super::KeyVersion::V2,
+		)?;
+		assert_eq!(
+			public.marshall()?,
+			[
+				0, 35, 0, 11, 0, 3, 0, 50, 0, 32, 139, 67, 252,
+				206, 35, 178, 254, 86, 130, 216, 27, 41, 104,
+				74, 93, 8, 215, 146, 120, 21, 6, 17, 220, 126,
+				89, 9, 87, 123, 64, 19, 10, 139, 0, 6, 0, 128,
+				0, 67, 0, 16, 0, 3, 0, 16, 0, 0, 0, 0
 			]
 		);
 		return Ok(());
@@ -370,7 +419,11 @@ pub mod tests {
 			139, 67, 52, 206, 35, 18, 254, 86, 130, 216, 27, 41, 9,
 			87, 123, 64, 19, 10, 139,
 		])?;
-		let res = super::create_primary(&mut context, digest)?;
+		let res = super::create_primary(
+			&mut context,
+			digest,
+			&super::KeyVersion::V1,
+		)?;
 		assert_eq!(
 			res.out_public.marshall()?,
 			[
@@ -418,11 +471,76 @@ pub mod tests {
 	}
 
 	#[test]
+	fn create_primary_v2() -> Result<(), DynError> {
+		let mut context = super::create_context()?;
+		let digest = Digest::try_from([
+			139, 67, 52, 206, 35, 18, 254, 86, 130, 216, 27, 41, 9,
+			104, 74, 93, 8, 215, 146, 120, 21, 6, 17, 220, 126, 89,
+			87, 123, 64, 19, 10, 139,
+		])?;
+		let res = super::create_primary(
+			&mut context,
+			digest,
+			&super::KeyVersion::V2,
+		)?;
+		assert_eq!(
+			res.out_public.marshall()?,
+			[
+				0, 35, 0, 11, 0, 3, 0, 50, 0, 32, 139, 67, 52,
+				206, 35, 18, 254, 86, 130, 216, 27, 41, 9, 104,
+				74, 93, 8, 215, 146, 120, 21, 6, 17, 220, 126,
+				89, 87, 123, 64, 19, 10, 139, 0, 6, 0, 128, 0,
+				67, 0, 16, 0, 3, 0, 16, 0, 32, 72, 159, 194,
+				31, 129, 168, 32, 30, 174, 96, 130, 202, 69,
+				119, 44, 22, 149, 211, 103, 82, 187, 249, 118,
+				251, 95, 181, 42, 170, 249, 253, 188, 222, 0,
+				32, 187, 201, 171, 159, 65, 99, 193, 109, 23,
+				47, 252, 153, 202, 25, 172, 103, 254, 91, 253,
+				233, 54, 119, 84, 59, 184, 242, 181, 23, 215,
+				69, 25, 120
+			]
+		);
+		assert_eq!(
+			res.creation_hash,
+			Digest::try_from([
+				40, 208, 38, 250, 253, 116, 145, 6, 116, 62,
+				39, 196, 40, 5, 81, 88, 94, 93, 23, 102, 142,
+				181, 33, 131, 94, 214, 1, 39, 239, 252, 5, 212
+			])?
+		);
+
+		assert_eq!(res.creation_ticket.tag(), Creation.into());
+		assert_eq!(
+			res.creation_ticket.hierarchy(),
+			Hierarchy::Endorsement
+		);
+		assert_eq!(
+			res.creation_ticket.digest(),
+			[
+				79, 134, 88, 146, 103, 187, 233, 143, 239, 241,
+				169, 47, 251, 108, 47, 183, 25, 59, 20, 189,
+				171, 98, 91, 154, 116, 60, 150, 57, 59, 212,
+				31, 76, 149, 240, 196, 210, 29, 172, 58, 186,
+				223, 87, 8, 106, 167, 201, 201, 235, 208, 178,
+				243, 172, 234, 195, 45, 217, 150, 234, 66, 203,
+				147, 243, 162, 68
+			]
+		);
+		return Ok(());
+	}
+
+	#[test]
 	fn set_policy() -> Result<(), DynError> {
 		let mut context = super::create_context()?;
 		let session = super::start_auth_session(&mut context)?;
+		// v1 with pcrs
 		let pcrs = vec![super::PcrSlot::Slot4, super::PcrSlot::Slot7];
-		super::set_policy(&mut context, &pcrs, session)?;
+		super::set_policy(
+			&mut context,
+			&pcrs,
+			session,
+			&super::KeyVersion::V1,
+		)?;
 		let session_digest =
 			context.policy_get_digest(session.try_into()?)?;
 		assert_eq!(
@@ -435,8 +553,14 @@ pub mod tests {
 			])?
 		);
 
+		// v1 without pcrs
 		context.policy_restart(session.try_into()?)?;
-		super::set_policy(&mut context, &vec![], session)?;
+		super::set_policy(
+			&mut context,
+			&vec![],
+			session,
+			&super::KeyVersion::V1,
+		)?;
 		let session_digest2 =
 			context.policy_get_digest(session.try_into()?)?;
 		assert_eq!(
@@ -448,6 +572,47 @@ pub mod tests {
 				163, 97
 			])?
 		);
+
+		// v2 without pcrs
+		context.policy_restart(session.try_into()?)?;
+		super::set_policy(
+			&mut context,
+			&vec![],
+			session,
+			&super::KeyVersion::V2,
+		)?;
+		let session_digest2 =
+			context.policy_get_digest(session.try_into()?)?;
+		assert_eq!(
+			session_digest2,
+			Digest::try_from([
+				143, 205, 33, 105, 171, 146, 105, 78, 12, 99,
+				63, 26, 183, 114, 132, 43, 130, 65, 187, 194,
+				2, 136, 152, 31, 199, 172, 30, 221, 193, 253,
+				219, 14
+			])?
+		);
+
+		// v2 with pcrs
+		context.policy_restart(session.try_into()?)?;
+		super::set_policy(
+			&mut context,
+			&vec![super::PcrSlot::Slot1, super::PcrSlot::Slot7],
+			session,
+			&super::KeyVersion::V2,
+		)?;
+		let session_digest2 =
+			context.policy_get_digest(session.try_into()?)?;
+		assert_eq!(
+			session_digest2,
+			Digest::try_from([
+				158, 231, 143, 94, 28, 7, 136, 21, 102, 71,
+				128, 22, 25, 93, 173, 191, 60, 16, 147, 129, 0,
+				109, 168, 101, 156, 11, 240, 189, 198, 228, 66,
+				75
+			])?
+		);
+
 		return Ok(());
 	}
 

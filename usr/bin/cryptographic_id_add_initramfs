@@ -1,9 +1,12 @@
-#!/usr/bin/sh
+#!/usr/bin/bash
 DIR="/etc/cryptographic_id/initramfs"
 TMPDIR=
 TMPKEY=
 NL='
 '
+PARENT_ATTR="fixedtpm|fixedparent|sensitivedataorigin|restricted|decrypt"
+OBJECT_ATTR="fixedtpm|fixedparent|sensitivedataorigin|noda|sign"
+
 help() {
 	cat << EOF
 Create identity in the initramfs directory. (Rebuild it to include new keys.)
@@ -33,6 +36,23 @@ create_tmpkey() {
 	TMPKEY="${TMPDIR}/id"
 	cryptographic_id create "${TMPKEY}"
 	cryptographic_id show "${TMPKEY}"
+}
+create_policy_session() {
+	local policy="${1}"
+	local pcrs="${2}"
+	tpm2_startauthsession -S session.ctx --policy-session
+	tpm2_policypassword -S session.ctx -L "${policy}" --quiet
+	if [ "${pcrs}" != "" ]; then
+		tpm2_policypcr \
+			--quiet \
+			--policy "${policy}" \
+			--session session.ctx \
+			--pcr-list "sha256:${pcrs}"
+	fi
+}
+cleanup_policy_session() {
+	tpm2_flushcontext session.ctx
+	rm -f session.ctx
 }
 umask 0077
 case "${1}" in
@@ -68,33 +88,35 @@ tpm2)
 	esac
 	mkdir -p "${key}"
 	cd "${TMPDIR}" || exit 1
-	policy=""
-	auth="str:x"
-	create_attribute="|userwithauth"
+	policy="policy.ctx"
 	printf "Use PCRs? (empty for none or list of pcrs, e.g. 1,7) "
 	read -r pcrs
-	if [ "${pcrs}" != "" ]; then
-		tpm2_startauthsession -S session.ctx
-		tpm2_policypcr \
-			--quiet \
-			--policy policy.pcr \
-			--session session.ctx \
-			--pcr-list "sha256:${pcrs}"
-		tpm2_flushcontext session.ctx
-		printf "%s" "${pcrs}" > "${key}/pcrs"
-		rm session.ctx
-		policy="yes"
-		auth=""
-		create_attribute=""
+	printf "Enter password (empty for no-password): "
+	read -r -s password
+	if [ "${password}" != "" ]; then
+		printf "\\nEnter password again: "
+		read -r -s password2
+		if [ "${password}" != "${password2}" ]; then
+			printf "\\nPasswords do not match\\n"
+			exit 1
+		fi
+		printf "" > "${key}/password"
 	fi
+	printf "\\n"
+	create_policy_session "${policy}" "${pcrs}"
+	if [ "${pcrs}" != "" ]; then
+		printf "%s" "${pcrs}" > "${key}/pcrs"
+	fi
+	policy_val="$(tpm2_getpolicydigest -S session.ctx --hex)"
 	tpm2_createprimary \
 		--quiet \
 		--hierarchy e \
 		--hash-algorithm sha256 \
 		--key-algorithm ecc256 \
 		--key-context primary.ctx \
-		${policy:+"--policy"} ${policy:+"policy.pcr"} \
-		--attributes "fixedtpm|fixedparent|sensitivedataorigin|userwithauth|restricted|decrypt"
+		--key-auth "${password}" \
+		--policy "${policy_val}" \
+		--attributes "${PARENT_ATTR}"
 	tpm2_create \
 		--quiet \
 		--key-algorithm ecc256 \
@@ -102,15 +124,20 @@ tpm2)
 		--public "${privdir}/ecc.pub" \
 		--private "${privdir}/ecc.priv" \
 		--parent-context primary.ctx \
-		${policy:+"--policy"} ${policy:+"policy.pcr"} \
-		${auth:+"--key-auth"} ${auth:+"${auth}"} \
+		--parent-auth "session:session.ctx+${password}" \
+		--key-auth "${password}" \
+		--policy "${policy_val}" \
 		--format pem \
 		--output "${key}/public_key.pem" \
-		--attributes "fixedtpm|fixedparent|sensitivedataorigin${create_attribute}|noda|sign"
+		--attributes "${OBJECT_ATTR}"
+	cleanup_policy_session
+	printf 2 > "${key}/version"
 	if [ "${3}" = "--handle-only" ]; then
+		create_policy_session "${policy}" "${pcrs}"
 		tpm2_load \
 			--quiet \
 			--parent-context primary.ctx \
+			--auth "session:session.ctx+${password}" \
 			--public "${privdir}/ecc.pub" \
 			--private "${privdir}/ecc.priv" \
 			--key-context ecc.ctx
@@ -118,6 +145,7 @@ tpm2)
 			--quiet \
 			--object-context ecc.ctx \
 			--output "${key}/handle"
+		cleanup_policy_session
 	fi
 	openssl ec -outform der \
 		-pubin -in "${key}/public_key.pem" \

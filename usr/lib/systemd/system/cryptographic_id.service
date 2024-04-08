@@ -15,28 +15,62 @@ Before=initrd-switch-root.service
 [Service]
 Type=oneshot
 RemainAfterExit=true
-ExecStartPre=+/usr/bin/mkdir -p /tmp/cryptographic_id
-ExecStartPre=+/usr/bin/mount -t tmpfs none /tmp/cryptographic_id
 ExecStart=-/usr/bin/sh /usr/lib/cryptographic_id/show_identities /etc/cryptographic_id/initramfs
-ExecStartPost=-+/usr/bin/umount /tmp/cryptographic_id
 
 StandardInput=tty
 StandardOutput=tty
 StandardError=tty
+DeviceAllow=/dev/tty
 TimeoutStartSec=10min
 
+TemporaryFileSystem=/:rw
+BindReadOnlyPaths=/etc/cryptographic_id
+BindReadOnlyPaths=/usr
+BindReadOnlyPaths=/lib
+BindReadOnlyPaths=/lib64
+BindPaths=-/dev/tpmrm0
+DeviceAllow=/dev/tpmrm0
+Environment=TCTI=device:/dev/tpmrm0
+
+AmbientCapabilities=
+CapabilityBoundingSet=
 IPAddressDeny=any
 LockPersonality=true
 MemoryDenyWriteExecute=true
 NoNewPrivileges=true
+PrivateDevices=true
+PrivateIPC=true
 PrivateNetwork=true
+PrivateTmp=true
+PrivateUsers=true
+ProcSubset=pid
 ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
 ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+ProtectSystem=strict
 RemoveIPC=true
+RestrictAddressFamilies=none
 RestrictNamespaces=true
 RestrictRealtime=true
 RestrictSUIDSGID=true
 SystemCallArchitectures=native
+SystemCallFilter=~@clock
+SystemCallFilter=~@cpu-emulation
+SystemCallFilter=~@debug
+SystemCallFilter=~@module
+SystemCallFilter=~@mount
+SystemCallFilter=~@obsolete
+SystemCallFilter=~@privileged
+SystemCallFilter=~@raw-io
+SystemCallFilter=~@reboot
+SystemCallFilter=~@resources
+SystemCallFilter=~@swap
+Umask=0077
 
 [Install]
 WantedBy=sysinit.target

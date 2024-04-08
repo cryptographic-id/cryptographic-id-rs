@@ -122,7 +122,7 @@ mod tests {
 
 	fn load_test_key() -> Result<SigningConfig, DynError> {
 		let file = fs::to_path_buf("tests/files/scan/signing_key");
-		return Ok(SigningConfig::load(&file)?);
+		return Ok(SigningConfig::load(&file, "")?);
 	}
 
 	fn example_msg() -> message::CryptographicId {
