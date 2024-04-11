@@ -30,10 +30,13 @@ BindReadOnlyPaths=/lib
 BindReadOnlyPaths=/lib64
 BindPaths=-/dev/tpmrm0
 DeviceAllow=/dev/tpmrm0
-Environment=TCTI=device:/dev/tpmrm0
+BindPaths=-/dev/video0
+DeviceAllow=/dev/video0
+EnvironmentFile=/etc/cryptographic_id/initramfs/config
 
 AmbientCapabilities=
 CapabilityBoundingSet=
+DevicePolicy=closed
 IPAddressDeny=any
 LockPersonality=true
 MemoryDenyWriteExecute=true

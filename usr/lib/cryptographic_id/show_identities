@@ -3,7 +3,6 @@ DIR="${1}"
 TMPDIR="/tmp/cryptographic_id"
 TMPKEY="${TMPDIR}/key"
 TMPFONT="/tmp/cryptographic_id.font"
-FONT="$(cat "${DIR}/font")"
 TTY_SETTINGS="$(stty -g)" || exit 1
 INPUT_PASSWORD=""
 
@@ -75,11 +74,11 @@ show_identities() {
 			fi
 			printf "\\nEnter message to sign: "
 			read -r msg
-			date '+%Y-%m-%d %H:%M:%S'
-			PASSWORD="${use_password}" run_binary sign "${file}" "${msg}"
 			# set custom font each iteration, to prevent problems
 			# when udev set it to something different
 			set_custom_font
+			date '+%Y-%m-%d %H:%M:%S'
+			PASSWORD="${use_password}" run_binary sign "${file}" "${msg}"
 			printf "\\nContinue (y) or create new qr-code (q)? "
 			read -r res
 			printf "\\n"
@@ -102,6 +101,9 @@ main() {
 	show_identities "insecure" cat_identity
 	show_identities "tpm2" tpm2_identity
 	show_identities "age" age_decrypt_identity
+	if [ "${EXTEND_PCR}" != "" ]; then
+		run_binary scan_and_measure
+	fi
 }
 
 main
