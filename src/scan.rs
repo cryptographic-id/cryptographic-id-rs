@@ -64,7 +64,8 @@ pub fn scan_id(
 					continue;
 				}
 			};
-			match message::verify_current_with_msg(&msg, &exp_msg) {
+			match message::verify_current_with_msg(&msg, &exp_msg)
+			{
 				Ok(()) => (),
 				Err(s) => {
 					print(format!("{}\n", s))?;
@@ -260,8 +261,8 @@ mod tests {
 		])?;
 		let sha256 = Digest::try_from(vec![
 			69, 118, 210, 215, 174, 24, 252, 210, 145, 250, 146,
-			34, 123, 169, 90, 53, 251, 122, 191, 11, 29, 10, 50, 3,
-			3, 57, 167, 67, 255, 241, 250, 51,
+			34, 123, 169, 90, 53, 251, 122, 191, 11, 29, 10, 50,
+			3, 3, 57, 167, 67, 255, 241, 250, 51,
 		])?;
 		tpm2::tests::assert_pcr_bank(
 			&mut tpm2_ctx,
@@ -292,8 +293,8 @@ mod tests {
 		])?;
 		let sha256 = Digest::try_from(vec![
 			69, 181, 67, 179, 102, 148, 197, 253, 15, 144, 223,
-			198, 7, 191, 146, 161, 115, 87, 16, 48, 7, 86, 67, 251,
-			31, 177, 224, 221, 19, 171, 117, 141,
+			198, 7, 191, 146, 161, 115, 87, 16, 48, 7, 86, 67,
+			251, 31, 177, 224, 221, 19, 171, 117, 141,
 		])?;
 		tpm2::tests::assert_pcr_bank(
 			&mut tpm2_ctx,
