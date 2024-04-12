@@ -84,21 +84,22 @@ mod test {
 	fn signing_config_tpm2() -> Result<(), DynError> {
 		let dir = fs::to_path_buf("tests/files/sign/tpm2");
 		let pubkey = vec![
-			4, 217, 21, 3, 90, 153, 86, 215, 109, 144, 192, 156,
-			64, 17, 161, 130, 133, 168, 173, 84, 110, 163, 117,
-			16, 13, 6, 189, 149, 76, 182, 117, 240, 3, 169, 114,
-			51, 120, 50, 218, 26, 145, 195, 103, 201, 172, 74, 97,
-			252, 241, 179, 72, 7, 207, 179, 22, 70, 170, 238, 58,
-			81, 102, 16, 237, 122, 128,
+			4, 224, 244, 0, 36, 168, 104, 223, 40, 152, 123, 50,
+			152, 61, 109, 206, 248, 157, 130, 136, 112, 98, 21,
+			33, 218, 143, 141, 188, 196, 165, 1, 27, 28, 135, 100,
+			159, 54, 223, 117, 44, 217, 170, 120, 74, 219, 186,
+			25, 55, 115, 97, 172, 72, 223, 120, 109, 61, 15, 243,
+			60, 179, 165, 105, 179, 124, 234,
 		];
-		let mut sign_config = super::SigningConfig::load(&dir, "")?;
+		let mut sign_config =
+			super::SigningConfig::load(&dir, "testsign")?;
 		assert_eq!(sign_config.public_key()?, pubkey);
 		assert_eq!(
 			sign_config.fingerprint()?,
-			"7A:74:DE:CA:EB:62:76:8D\n\
-			60:50:68:8B:85:B9:5B:3D\n\
-			8E:C2:75:9F:BE:2B:FE:30\n\
-			A9:45:2D:93:C6:9A:68:7E"
+			"31:B3:24:AB:B2:37:16:F5\n\
+			AF:9E:4E:41:B3:F2:77:84\n\
+			18:8D:DB:2C:46:16:5A:6B\n\
+			EA:12:0C:DE:7D:5C:1D:88"
 		);
 		assert_eq!(
 			sign_config.public_key_type(),
