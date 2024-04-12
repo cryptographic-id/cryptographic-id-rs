@@ -27,7 +27,7 @@ rustfmt:
   image: rust:latest
   script:
     - apt-get update
-    - apt-get --yes install codespell git
+    - apt-get --yes install git
     - git submodule update --init --recursive
     - rustup component add rustfmt
     - cargo fmt
