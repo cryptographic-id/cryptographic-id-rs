@@ -101,7 +101,7 @@ pub fn scan_and_measure<'a>(
 		}
 	};
 	tpm2::pcr_extend(tpm2_ctx, pcr, hash)?;
-	// always meassure something in case of error
+	// always measure something in case of error
 	err?;
 	return Ok(());
 }
