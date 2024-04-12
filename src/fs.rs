@@ -65,7 +65,8 @@ mod tests {
 
 	#[test]
 	fn write_file_inexistent() {
-		let path = Path::new("/tmp/inexistent/read_file").to_path_buf();
+		let path =
+			Path::new("/tmp/inexistent/read_file").to_path_buf();
 		let val = vec![93];
 		let res = super::write_file(&val, &path);
 		let error = res.unwrap_err().kind();

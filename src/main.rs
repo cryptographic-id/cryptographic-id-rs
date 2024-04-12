@@ -121,13 +121,15 @@ fn parse_args_and_execute(args: &Vec<String>) -> i32 {
 					return 2;
 				}
 			};
-			let hex = match sign_config.fingerprint() {
-				Ok(k) => k,
-				Err(e) => {
-					println!("Error formatting key: {}", e);
-					return 2;
-				}
-			};
+			let hex =
+				match sign_config.fingerprint() {
+					Ok(k) => k,
+					Err(e) => {
+						println!(
+						"Error formatting key: {}", e);
+						return 2;
+					}
+				};
 			println!("Public Key:\n{}", hex);
 			return 0;
 		}

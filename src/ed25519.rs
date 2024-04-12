@@ -68,9 +68,9 @@ mod tests {
 
 	fn load_test_key() -> super::SigningKey {
 		let fname = "tests/files/ed25519/test_private_key";
-		return super::load_keypair_from_file(&super::fs::to_path_buf(
-			fname,
-		))
+		return super::load_keypair_from_file(
+			&super::fs::to_path_buf(fname),
+		)
 		.unwrap();
 	}
 
@@ -91,9 +91,9 @@ mod tests {
 			super::fingerprint(&key.verifying_key()).unwrap(),
 			vec![
 				11, 45, 192, 121, 75, 216, 66, 161, 194, 65,
-				46, 224, 202, 78, 123, 254, 118, 250, 181, 249,
-				84, 175, 77, 202, 182, 149, 196, 114, 76, 188,
-				183, 1
+				46, 224, 202, 78, 123, 254, 118, 250, 181,
+				249, 84, 175, 77, 202, 182, 149, 196, 114, 76,
+				188, 183, 1
 			]
 		);
 	}

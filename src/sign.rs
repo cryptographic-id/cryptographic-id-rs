@@ -19,7 +19,8 @@ impl SigningConfig {
 	) -> Result<Self, DynError> {
 		let path = pathbuf.as_path();
 		if path.is_file() {
-			return match ed25519::load_keypair_from_file(&pathbuf) {
+			return match ed25519::load_keypair_from_file(&pathbuf)
+			{
 				Ok(k) => Ok(SigningConfig::Ed25519(k)),
 				Err(e) => Err(Box::new(e)),
 			};
@@ -84,11 +85,11 @@ mod test {
 		let dir = fs::to_path_buf("tests/files/sign/tpm2");
 		let pubkey = vec![
 			4, 217, 21, 3, 90, 153, 86, 215, 109, 144, 192, 156,
-			64, 17, 161, 130, 133, 168, 173, 84, 110, 163, 117, 16,
-			13, 6, 189, 149, 76, 182, 117, 240, 3, 169, 114, 51,
-			120, 50, 218, 26, 145, 195, 103, 201, 172, 74, 97, 252,
-			241, 179, 72, 7, 207, 179, 22, 70, 170, 238, 58, 81,
-			102, 16, 237, 122, 128,
+			64, 17, 161, 130, 133, 168, 173, 84, 110, 163, 117,
+			16, 13, 6, 189, 149, 76, 182, 117, 240, 3, 169, 114,
+			51, 120, 50, 218, 26, 145, 195, 103, 201, 172, 74, 97,
+			252, 241, 179, 72, 7, 207, 179, 22, 70, 170, 238, 58,
+			81, 102, 16, 237, 122, 128,
 		];
 		let mut sign_config = super::SigningConfig::load(&dir, "")?;
 		assert_eq!(sign_config.public_key()?, pubkey);
@@ -114,8 +115,8 @@ mod test {
 		let file = fs::to_path_buf("tests/files/sign/ed25519");
 		let pubkey = vec![
 			94, 183, 62, 28, 74, 112, 186, 74, 57, 152, 75, 149,
-			127, 150, 26, 109, 4, 4, 7, 127, 72, 77, 143, 129, 183,
-			228, 156, 146, 81, 210, 25, 249,
+			127, 150, 26, 109, 4, 4, 7, 127, 72, 77, 143, 129,
+			183, 228, 156, 146, 81, 210, 25, 249,
 		];
 		let mut sign_config = super::SigningConfig::load(&file, "")?;
 		assert_eq!(sign_config.public_key()?, pubkey);
