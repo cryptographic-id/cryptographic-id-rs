@@ -87,6 +87,16 @@ show_identities() {
 	done
 }
 
+scan_and_measure() {
+	res="y"
+	while [ "${res}" = "y" ]; do
+		run_binary scan_and_measure
+		printf "\\nScan another identity (y) or continue (c)? "
+		read -r res
+		printf "\\n"
+	done
+}
+
 cleanup() {
 	if [ -f "${TMPFONT}" ]; then
 		setfont "${TMPFONT}"
@@ -102,7 +112,7 @@ main() {
 	show_identities "tpm2" tpm2_identity
 	show_identities "age" age_decrypt_identity
 	if [ "${EXTEND_PCR}" != "" ]; then
-		run_binary scan_and_measure
+		scan_and_measure
 	fi
 }
 

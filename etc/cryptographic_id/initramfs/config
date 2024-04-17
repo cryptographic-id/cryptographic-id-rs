@@ -5,7 +5,7 @@ FONT=
 # To scan and measure an ID into a PCR, set EXTEND_PCR to the PCR you
 # want to extend. Please choose it carefully.
 # EXTEND_PCR=13
-#
+
 # Video4Linux device to scan QR-code.
 # Please make sure, the systemd-service allows access to the device
 # (`DeviceAllow` and `BindPaths`).
