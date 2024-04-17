@@ -19,19 +19,14 @@ build() {
 		exit 1
 	fi
 	add_full_dir "${DIR}"
-	font="$(tr -d ' \t\n' < "${DIR}/font")"
-	printf "%s" "${font}" > "${BUILDROOT}/${DIR}/font"
+	font="$(grep -o '^\s*FONT=[^ ]*' "${DIR}/config" |
+		tail -n 1 | cut -d= -f2)"
 	if [ "${font}" != "" ]; then
 		add_file "/usr/share/kbd/consolefonts/${font}"*
 		add_binary setfont
 	fi
 	if [ -n "$(ls -A "${DIR}/age")" ]; then
 		add_binary "age"
-	fi
-	if [ -n "$(ls -A "${DIR}/cryptsetup")" ]; then
-		add_binary "/usr/lib/systemd/systemd-cryptsetup"
-		add_module 'dm-crypt'
-		add_all_modules '/crypto/'
 	fi
 	if [ -n "$(ls -A "${DIR}/tpm2")" ]; then
 		add_checked_modules '/drivers/char/tpm/'

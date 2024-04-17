@@ -38,8 +38,8 @@ install() {
 	fi
 	inst_multiple "${DIR}"/*/*
 
-	font="$(tr -d ' \t\n' < "${DIR}/font")"
-	printf "%s" "${font}" > "${initdir}/${DIR}/font"
+	font="$(grep -o '^\s*FONT=[^ ]*' "${DIR}/config" |
+		tail -n 1 | cut -d= -f2)"
 	if [ "${font}" != "" ]; then
 		inst_multiple "/usr/share/kbd/consolefonts/${font}"*
 		inst_binary gzip
@@ -47,11 +47,6 @@ install() {
 	fi
 	if [ -n "$(ls -A "${DIR}/age")" ]; then
 		inst_binary age
-	fi
-	if [ -n "$(ls -A "${DIR}/cryptsetup")" ]; then
-		inst_binary /usr/lib/systemd/systemd-cryptsetup
-		inst_binary dd
-		inst_libdir_file 'libtss2-tcti-device.so*'
 	fi
 	if [ -n "$(ls -A "${DIR}/tpm2")" ]; then
 		inst_multiple "${DIR}"/tpm2/*/*
