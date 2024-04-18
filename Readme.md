@@ -79,6 +79,8 @@ To run the tests, you need swtpm and tpm2-abrmd installed.
 
 ```bash
 dbus-run-session bash tests/run_test.sh
+# Run all tests:
+dbus-run-session bash tests/run_test.sh -- --include-ignored
 ```
 
 ### Security
