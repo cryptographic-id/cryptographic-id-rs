@@ -3,9 +3,8 @@ Description=Show cryptographic identities on boot
 DefaultDependencies=no
 After=dev-tpmrm0.device
 After=systemd-vconsole-setup.service
-After=tmp.mount
+After=verity-squash-root-notify.service
 Wants=systemd-vconsole-setup.service
-Wants=tmp.mount
 # Dracut
 Before=dracut-initqueue.service
 Before=dracut-pre-mount.service
@@ -20,18 +19,22 @@ ExecStart=-/usr/bin/sh /usr/lib/cryptographic_id/show_identities /etc/cryptograp
 StandardInput=tty
 StandardOutput=tty
 StandardError=tty
-DeviceAllow=/dev/tty
 TimeoutStartSec=10min
+
+DeviceAllow=/dev/console
+DeviceAllow=/dev/tpmrm0
+DeviceAllow=/dev/tty
+DeviceAllow=/dev/video0
 
 TemporaryFileSystem=/:rw
 BindReadOnlyPaths=/etc/cryptographic_id
+BindReadOnlyPaths=/bin
 BindReadOnlyPaths=/usr
 BindReadOnlyPaths=/lib
 BindReadOnlyPaths=/lib64
+BindPaths=-/dev/console
 BindPaths=-/dev/tpmrm0
-DeviceAllow=/dev/tpmrm0
 BindPaths=-/dev/video0
-DeviceAllow=/dev/video0
 EnvironmentFile=/etc/cryptographic_id/initramfs/config
 
 AmbientCapabilities=
@@ -73,7 +76,7 @@ SystemCallFilter=~@raw-io
 SystemCallFilter=~@reboot
 SystemCallFilter=~@resources
 SystemCallFilter=~@swap
-Umask=0077
+UMask=0077
 
 [Install]
 WantedBy=sysinit.target
