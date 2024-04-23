@@ -28,7 +28,6 @@ install() {
 	inst_binary systemd-escape
 	inst_binary umount
 	inst_binary /usr/lib/cryptographic_id/cryptographic-id-rs
-	inst /usr/lib/cryptographic_id/initramfs_helper
 	inst /usr/lib/cryptographic_id/show_identities
 	# shellcheck disable=SC2154
 	mkdir -p "${initdir}"/tmp/cryptographic_id
@@ -37,6 +36,7 @@ install() {
 		exit 1
 	fi
 	inst_multiple "${DIR}"/*/*
+	inst_multiple "${DIR}"/config
 
 	font="$(grep -o '^\s*FONT=[^ ]*' "${DIR}/config" |
 		tail -n 1 | cut -d= -f2)"
@@ -55,7 +55,6 @@ install() {
 	# shellcheck disable=SC2154
 	local ssud="${systemdsystemunitdir}"
 	inst /usr/lib/systemd/system/cryptographic_id.service
-	inst /usr/lib/systemd/system/cryptographic_id_helper@.service
 	# shellcheck disable=SC2154
 	inst "${moddir}/systemd_wants.conf" \
 		"${ssud}/systemd-cryptsetup@.service.d/cryptographic_id.conf"

@@ -11,7 +11,6 @@ build() {
 	add_binary systemd-escape
 	add_binary umount
 	add_binary "/usr/lib/cryptographic_id/cryptographic-id-rs"
-	add_file "/usr/lib/cryptographic_id/initramfs_helper"
 	add_file "/usr/lib/cryptographic_id/show_identities"
 	add_dir /tmp/cryptographic_id
 	if [ "$(find "${DIR}" -perm -o=r)" != "" ]; then
@@ -23,6 +22,7 @@ build() {
 		tail -n 1 | cut -d= -f2)"
 	if [ "${font}" != "" ]; then
 		add_file "/usr/share/kbd/consolefonts/${font}"*
+		add_binary gzip
 		add_binary setfont
 	fi
 	if [ -n "$(ls -A "${DIR}/age")" ]; then
@@ -33,7 +33,6 @@ build() {
 	fi
 	if type add_systemd_unit &> /dev/null; then
 		add_systemd_unit cryptographic_id.service
-		add_systemd_unit cryptographic_id_helper@.service
 		cat <<EOF | add_systemd_drop_in initrd-switch-root.service cryptographic_id
 [Unit]
 After=cryptographic_id.service
