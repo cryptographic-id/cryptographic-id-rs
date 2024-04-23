@@ -3,10 +3,11 @@ test:
   script:
     - apt-get update
     - apt-get --yes install
-      clang cargo pkgconf protobuf-compiler git
+      clang pkgconf protobuf-compiler git rustup
       shellcheck dbus-daemon
       swtpm swtpm-tools tpm2-abrmd tpm2-tools
       libtss2-dev libtss2-tcti-tabrmd0 libtss2-tcti-swtpm0
+    - rustup override set 1.81
     - git submodule update --init --recursive
     - shellcheck usr/lib/cryptographic_id/* usr/bin/*
       usr/lib/initcpio/install/cryptographic-id

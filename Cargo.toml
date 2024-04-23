@@ -5,20 +5,20 @@ authors = ["Simon Brand <simon.brand@postadigitale.de>"]
 edition = "2021"
 
 [dependencies]
-asn1-rs = "0.5"
-base64 = "0.21"
-ed25519-dalek = { version = "2.0", features = ["rand_core"] }
-nix = { version = "0.27", features = ["signal"] }
+asn1-rs = "0.7"
+base64 = "0.22"
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+nix = { version = "0.29", features = ["signal"] }
 p256 = "0.13"
-prost = "0.12"
-qrcode = { version = "0.12", default-features = false }
+prost = "0.13"
+qrcode = { version = "0.14", default-features = false }
 qrcode_scanner = "0.3"
 rand = "0.8"
 sha2 = "0.10"
-tss-esapi = { git = "https://github.com/parallaxsecond/rust-tss-esapi.git", rev = "f327371657b572597d173f909e1a81595366e535", features = ["generate-bindings"] }
+tss-esapi = { git = "https://github.com/parallaxsecond/rust-tss-esapi.git", rev = "beeccaa6e280d1900234177696128441967b8419", features = ["generate-bindings"] }
 
 [build-dependencies]
-prost-build = "0.12"
+prost-build = "0.13"
 
 [dev-dependencies]
 tempfile = "3.6"

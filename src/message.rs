@@ -5,6 +5,7 @@ use crate::prime256v1;
 use crate::sign::SigningConfig;
 use crate::time;
 
+use std::fmt;
 use base64::Engine;
 use prost::Message;
 
@@ -33,6 +34,19 @@ pub fn to_base64(m: &CryptographicId) -> Result<String, prost::EncodeError> {
 pub enum DecodeError {
 	ProtobufError(prost::DecodeError),
 	Base64Error(base64::DecodeError),
+}
+
+impl fmt::Display for DecodeError {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::ProtobufError(i) => {
+				return i.fmt(f);
+			},
+			Self::Base64Error(i) => {
+				return i.fmt(f);
+			},
+		};
+	}
 }
 
 impl From<base64::DecodeError> for DecodeError {

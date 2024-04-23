@@ -57,8 +57,7 @@ pub fn scan_id(
 				Ok(b) => b,
 				Err(e) => {
 					print(format!(
-						"Failed to decode: \
-							{:?}\n",
+						"Failed to decode: {}\n",
 						e
 					))?;
 					continue;
@@ -194,7 +193,7 @@ mod tests {
 			std::str::from_utf8(&output)?,
 			"Send message: 444444\n\
 			Wrong message, please share 444444\n\
-			Failed to decode: Base64Error(InvalidLength)\n\
+			Failed to decode: Invalid symbol 32, offset 6.\n\
 			Send message: 123456\n"
 		);
 		return Ok(());
