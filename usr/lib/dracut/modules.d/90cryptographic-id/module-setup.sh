@@ -1,5 +1,9 @@
 #!/bin/bash
 DIR="/etc/cryptographic_id/initramfs"
+read_config() {
+	grep -o "^\s*${1}=[^ ]*" "${DIR}/config" |
+		tail -n 1 | cut -d= -f2
+}
 
 depends() {
 	echo "dracut-systemd"
@@ -15,6 +19,10 @@ installkernel() {
 	fi
 	if [ -n "$(ls -A "${DIR}/tpm2")" ]; then
 		instmods '=drivers/char/tpm'
+	fi
+	pcr="$(read_config EXTEND_PCR)"
+	if [ "${pcr}" != "" ]; then
+		instmods uvcvideo
 	fi
 }
 
@@ -38,8 +46,7 @@ install() {
 	inst_multiple "${DIR}"/*/*
 	inst_multiple "${DIR}"/config
 
-	font="$(grep -o '^\s*FONT=[^ ]*' "${DIR}/config" |
-		tail -n 1 | cut -d= -f2)"
+	font="$(read_config FONT)"
 	if [ "${font}" != "" ]; then
 		inst_multiple "/usr/share/kbd/consolefonts/${font}"*
 		inst_binary gzip

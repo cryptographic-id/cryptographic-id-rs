@@ -1,5 +1,9 @@
 #!/bin/bash
 DIR="/etc/cryptographic_id/initramfs"
+read_config() {
+	grep -o "^\s*${1}=[^ ]*" "${DIR}/config" |
+		tail -n 1 | cut -d= -f2
+}
 
 build() {
 	add_binary cat
@@ -18,12 +22,15 @@ build() {
 		exit 1
 	fi
 	add_full_dir "${DIR}"
-	font="$(grep -o '^\s*FONT=[^ ]*' "${DIR}/config" |
-		tail -n 1 | cut -d= -f2)"
+	font="$(read_config FONT)"
 	if [ "${font}" != "" ]; then
 		add_file "/usr/share/kbd/consolefonts/${font}"*
 		add_binary gzip
 		add_binary setfont
+	fi
+	pcr="$(read_config EXTEND_PCR)"
+	if [ "${pcr}" != "" ]; then
+		add_checked_modules uvcvideo
 	fi
 	if [ -n "$(ls -A "${DIR}/age")" ]; then
 		add_binary "age"
