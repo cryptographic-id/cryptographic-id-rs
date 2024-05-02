@@ -1,6 +1,5 @@
 test:
-  # TODO: change to ubuntu:latest, when tss2-sys >= 3.2.2
-  image: ubuntu:rolling
+  image: ubuntu:latest
   script:
     - apt-get update
     - apt-get --yes install
