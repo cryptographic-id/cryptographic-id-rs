@@ -88,10 +88,10 @@ show_identities() {
 }
 
 scan_and_measure() {
-	res="y"
-	while [ "${res}" = "y" ]; do
+	res=""
+	while [ "${res}" != "y" ]; do
 		run_binary scan_and_measure
-		printf "\\nScan another identity (y) or continue (c)? "
+		printf "\\nContinue (y) or scan another id (s)? "
 		read -r res
 		printf "\\n"
 	done
