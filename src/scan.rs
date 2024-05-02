@@ -98,6 +98,7 @@ pub fn scan_and_measure<'a>(
 		},
 		Err(e) => {
 			println!("Failed to scan id: {}", e);
+			println!("Measure default value");
 			(vec![0xf0; 32], Err(e))
 		}
 	};

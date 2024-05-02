@@ -16,17 +16,35 @@ pub fn tpm2_scan_and_measure(
 			return -3;
 		}
 	};
-	let mut camera = match scan::create_camera(cam_path) {
-		Ok(c) => c,
-		Err(e) => {
-			println!("{}", e);
-			return -1;
-		}
-	};
 	let mut context = match tpm2::create_context() {
 		Ok(c) => c,
 		Err(e) => {
 			println!("Failed to open tpm2: {}", e);
+			return -1;
+		}
+	};
+	let mut camera = match scan::create_camera(cam_path) {
+		Ok(c) => c,
+		Err(e) => {
+			println!("{}", e);
+			match tpm2::pcr_extend(
+				&mut context,
+				pcr,
+				vec![0xe0; 32],
+			) {
+				Ok(_) => {
+					println!(
+						"Extended pcr with {}",
+						"default value"
+					);
+				}
+				Err(s) => {
+					println!(
+						"Failed to pcr_extend: {}",
+						s
+					);
+				}
+			};
 			return -1;
 		}
 	};
